@@ -37,6 +37,9 @@ test:all
 %.o:%.c *.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
+install:
+	cp miniFE.x ../bin/
+
 clean:
 	rm -f *.o *.a *.x *.linkinfo miniFE_info.hpp
 

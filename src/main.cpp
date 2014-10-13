@@ -118,7 +118,14 @@ int main(int argc, char** argv) {
 
 #ifdef HAVE_MPI
   MPI_Datatype mpi_dtype = miniFE::TypeTraits<MINIFE_GLOBAL_ORDINAL>::mpi_type();
+#ifdef NON_BLOCKING_MPI
+  MPI_Request req1;
+  MPI_Status stat1;
+  MPI_Iallreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, MPI_COMM_WORLD, &req1);
+  MPI_Wait(&req1, &stat1);
+#else
   MPI_Allreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, MPI_COMM_WORLD);
+#endif
 #endif
 
   if (min_ids == 0) {
@@ -164,6 +171,20 @@ int main(int argc, char** argv) {
    long long int max_rss = 0;
 
 #ifdef HAVE_MPI
+#ifdef NON_BLOCKING_MPI
+   MPI_Request req2[2];
+   MPI_Status stat2[2];
+   MPI_Ireduce(&rank_rss, &global_rss, 1,
+			   MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD, &req2[0]);
+   MPI_Ireduce(&rank_rss, &max_rss, 1,
+			   MPI_LONG_LONG, MPI_MAX, 0, MPI_COMM_WORLD, &req2[1]);
+   MPI_Waitall(2, req2, stat2);
+
+   if (myproc == 0) {
+        doc.add("Global All-RSS (kB)", global_rss);
+       	doc.add("Global Max-RSS (kB)", max_rss);
+   }
+#else
    MPI_Reduce(&rank_rss, &global_rss, 1,
        	MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
    MPI_Reduce(&rank_rss, &max_rss, 1,
@@ -172,6 +193,7 @@ int main(int argc, char** argv) {
         doc.add("Global All-RSS (kB)", global_rss);
        	doc.add("Global Max-RSS (kB)", max_rss);
    }
+#endif
 #else
    doc.add("RSS (kB)", rank_rss);
 #endif
