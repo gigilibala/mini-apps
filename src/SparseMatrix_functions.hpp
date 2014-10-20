@@ -615,14 +615,6 @@ void operator()(MatrixType& A,
 
 template<typename MatrixType,
          typename VectorType>
-void matvec(MatrixType& A, VectorType& x, VectorType& y)
-{
-  matvec_std<MatrixType,VectorType> mv;
-  mv(A, x, y);
-}
-
-template<typename MatrixType,
-         typename VectorType>
 struct matvec_overlap {
 void operator()(MatrixType& A,
                     VectorType& x,
@@ -673,6 +665,17 @@ void operator()(MatrixType& A,
 #endif
 }
 };
+
+template<typename MatrixType,
+         typename VectorType>
+void matvec(MatrixType& A, VectorType& x, VectorType& y)
+{
+	// FA-MPI: we assume to call matvec_overlap in standard case instead of
+	// normal matvec to allow overlapping computation with communication
+//matvec_std<MatrixType,VectorType> mv;
+  matvec_overlap<MatrixType,VectorType> mv;
+  mv(A, x, y);
+}
 
 }//namespace miniFE
 

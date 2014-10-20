@@ -200,9 +200,13 @@ begin_exchange_externals(MatrixType& A,
   //
 
   int MPI_MY_TAG = 99;
-
+#ifdef NON_BLOCKING_MPI
+  // first num_neighbors are receives
+  // second num_neighbors are send
+  exch_ext_requests.resize(num_neighbors*2);
+#else
   exch_ext_requests.resize(num_neighbors);
-
+#endif
   //
   // Externals are at end of locals
   //
@@ -235,8 +239,13 @@ begin_exchange_externals(MatrixType& A,
 
   for(int i=0; i<num_neighbors; ++i) {
     int n_send = send_length[i];
+#ifdef NON_BLOCKING_MPI
+    MPI_Isend(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
+			  MPI_COMM_WORLD, &exch_ext_requests[num_neighbors+i]);
+#else
     MPI_Send(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
              MPI_COMM_WORLD);
+#endif	// NON_BLOCKING_MPI
     s_buffer += n_send;
   }
 #endif
@@ -250,7 +259,10 @@ finish_exchange_externals(int num_neighbors)
   //
   // Complete the reads issued above
   //
-
+#if NON_BLOCKING_MPI
+	MPI_Request* reqs = &exch_ext_requests[0];
+	MPI_Waitall(num_neighbors*2, reqs, MPI_STATUS_IGNORE);
+#else
   MPI_Status status;
   for(int i=0; i<num_neighbors; ++i) {
     if (MPI_Wait(&exch_ext_requests[i], &status) != MPI_SUCCESS) {
@@ -258,9 +270,10 @@ finish_exchange_externals(int num_neighbors)
       MPI_Abort(MPI_COMM_WORLD, -1);
     }
   }
+#endif	// NON_BLOCKING_MPI
+  
 
-//endif HAVE_MPI
-#endif
+#endif //HAVE_MPI
 }
 
 }//namespace miniFE
