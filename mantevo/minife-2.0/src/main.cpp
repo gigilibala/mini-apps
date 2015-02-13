@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 
 #ifdef HAVE_MPI
   MPI_Datatype mpi_dtype = miniFE::TypeTraits<MINIFE_GLOBAL_ORDINAL>::mpi_type();
-#ifdef NON_BLOCKING_MPI
+#ifdef USING_FAMPI
   MPI_Request req1;
   MPI_Status stat1;
   MPI_Iallreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, MPI_COMM_WORLD, &req1);
@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
    long long int max_rss = 0;
 
 #ifdef HAVE_MPI
-#ifdef NON_BLOCKING_MPI
+#ifdef USING_FAMPI
    MPI_Request req2[2];
    MPI_Status stat2[2];
    MPI_Ireduce(&rank_rss, &global_rss, 1,
