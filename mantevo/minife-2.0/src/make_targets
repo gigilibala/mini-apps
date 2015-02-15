@@ -37,7 +37,7 @@ test:all
 %.o:%.c *.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-install:
+install: all
 	cp miniFE.x ../bin/
 
 clean:
