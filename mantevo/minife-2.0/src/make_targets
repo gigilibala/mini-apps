@@ -17,15 +17,17 @@ MINIFE_KERNELS = 0
 
 vpath %.cpp ../utils
 
-all:common_files generate_info miniFE.x
+all:miniFE_info.hpp miniFE.x
 
-miniFE.x:common_files $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) *.hpp generate_info
-	$(INSTRUMENT) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) -o miniFE.x $(LDFLAGS) $(OPTIONAL_LIBS) $(LIBS)
+# *.hpp 
+
+miniFE.x: $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) 
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDFLAGS) $(OPTIONAL_LIBS) $(LIBS)
 
 common_files:
 	./get_common_files
 
-generate_info:
+miniFE_info.hpp:
 	./generate_info_header "$(CXX)" "$(CXXFLAGS)" "miniFE" "MINIFE"
 
 test:all
@@ -38,7 +40,7 @@ test:all
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 install: all
-	cp miniFE.x ../bin/
+	cp miniFE.x ../../../bin/
 
 clean:
 	rm -f *.o *.a *.x *.linkinfo miniFE_info.hpp
@@ -46,3 +48,4 @@ clean:
 realclean: clean
 	rm -f gmon.out gprof.* *~ *.yaml *.TVD.* *.mtx* *.vec* minife_debug*
 
+.PHONY: clean common_files install realclean test
