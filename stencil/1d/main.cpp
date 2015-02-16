@@ -1,5 +1,5 @@
 /* Copyright @ AMIN HASSANI 2015 */
-
+/* make everything nonblocking */
 #include <iostream>
 #include <sys/time.h>
 #include <stdio.h>
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 {
 		
 	int rank, size;
-	MPI_Comm world = MPI_COMM_WORLD;
+	MPI_Comm world = MPI_COMM_WORLD, world_dup;
 	int matrix_size = 0, rows, cols, internal_matrix_size;
 	double time1, time2, time3;
 	double *matrix = NULL, *tmp;
@@ -32,6 +32,9 @@ int main(int argc, char *argv[])
 	int top_neigh, bot_neigh;
 	MPI_Request ee_reqs[4];
 	MPI_Status  ee_stats[4];
+
+	MPI_Request tb_req1, tb_req2,  dup_req,  barrier_req;
+	MPI_Status tb_stat1, tb_stat2, dup_stat, barrier_stat;
 	/* initiate the random number generator */
 	srand(time(NULL));
 
@@ -45,6 +48,9 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
+	/* duplicating communciator for now */
+	MPI_Comm_idup(world, &world_dup, &dup_req);
+	MPI_Wait(&dup_req, &dup_stat);
 	
 	/* input processing */
 	rows = atoi(argv[1]);
@@ -75,7 +81,8 @@ int main(int argc, char *argv[])
 	
 
 	/* make sure everyone is here */
-	MPI_Barrier(world);
+	MPI_Ibarrier(world, &barrier_req);
+	MPI_Wait(&barrier_req, &barrier_stat);
 
 	TICK();
 	/* for loop for processing iterations*/
@@ -83,6 +90,9 @@ int main(int argc, char *argv[])
 
 		if(!(iter % 20) && 0 == rank)
 			cout << "iter " << iter << endl;
+
+		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req1);
+
 		/* exchange externals */
 		int req_i = 0;
 		/* recv from top */
@@ -110,7 +120,11 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < cols; ++i)
 			heavy_op(tmp);
 
-		MPI_Barrier(world);
+		MPI_Tryblock_finish(tb_req1, 0, NULL);
+		MPI_Wait(&tb_req1, &tb_stat1);
+//		MPI_Ibarrier(world, &barrier_req);
+//		MPI_Wait(&barrier_req, &barrier_stat);
+	
 	}
 
 	/* recovery if needec */
