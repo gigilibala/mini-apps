@@ -6,46 +6,124 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <mpi-ext.h>
+#include <assert.h>
+#include "../helper/helper.hpp"
+
+static inline void mult_div_op(double *value)
+{
+	(*value) *= (*value);
+	if (*value) (*value) /= (*value);
+}
+
+#define heavy_op mult_div_op
 
 using namespace std;
 
-typedef struct timeval timeval_t
-
-/* public timing functions */
-double gtime;
-#define TICK()     (gtime = MPI_Wtime())
-#define TOCK(time) (time += MPI_Wtime() - gtime)
-
 int main(int argc, char *argv[])
 {
-
+		
 	int rank, size;
 	MPI_Comm world = MPI_COMM_WORLD;
-	int matrix_size = 0;
-	
+	int matrix_size = 0, rows, cols, internal_matrix_size;
+	double time1, time2, time3;
+	double *matrix = NULL, *tmp;
+	double *neigh_top_ext, *neigh_bot_ext, *my_top_ext, *my_bot_ext;
+	int max_iter;
+	int top_neigh, bot_neigh;
+	MPI_Request ee_reqs[4];
+	MPI_Status  ee_stats[4];
+	/* initiate the random number generator */
+	srand(time(NULL));
+
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(world, &rank);
 	MPI_Comm_size(world, &size);
-
-	if(argc < 2){
+	
+	if(argc < 3){
 		if(rank == 0)
-			cout << "usage: stencil_1d.x <2d_matrix_size>" << endl;
+			cout << "usage: stencil_1d.x <rows> <cols> <max_iter>" << endl;
 		goto cleanup;
 	}
 
-	/* input processing */
-	matrix_size = atoi(argv[1]);
-
 	
-	/* setup the random matrix */
+	/* input processing */
+	rows = atoi(argv[1]);
+	cols = atoi(argv[2]);
 
+	max_iter = argc <= 3 ? 100 : atoi(argv[3]);
+
+	/* create and setup the random matrix */
+	matrix_size = (rows + 2) * cols;
+	internal_matrix_size = (rows - 2) * cols;
+	matrix = (double*)malloc(sizeof(double) * matrix_size);
+	tmp = matrix;
+	assert(tmp);
+	assert(matrix);
+	for (int i = 0; i < matrix_size; ++i, tmp++){
+		*tmp = (double)rand();
+	}
+	neigh_top_ext = matrix;
+	neigh_bot_ext = matrix + (rows + 1) * cols;
+	my_top_ext    = matrix + cols;
+	my_bot_ext    = matrix + rows * cols;
+	
+
+
+	/* setting up neighbors */
+	top_neigh = (rank-1+size)%size;
+	bot_neigh = (rank+1)%size;
+	
+
+	/* make sure everyone is here */
+	MPI_Barrier(world);
+
+	TICK();
 	/* for loop for processing iterations*/
+	for (int iter = 0; iter < max_iter; ++iter){
+
+		if(!(iter % 20) && 0 == rank)
+			cout << "iter " << iter << endl;
+		/* exchange externals */
+		int req_i = 0;
+		/* recv from top */
+		MPI_Irecv(neigh_top_ext, cols, MPI_DOUBLE, top_neigh, 0, world, &ee_reqs[req_i++]);
+		/* recv from bottom */
+		MPI_Irecv(neigh_bot_ext, cols, MPI_DOUBLE, bot_neigh, 0, world, &ee_reqs[req_i++]);
+		/* send to top */
+		MPI_Isend(neigh_top_ext, cols, MPI_DOUBLE, top_neigh, 0, world, &ee_reqs[req_i++]);
+		/* send to bottom */
+		MPI_Isend(neigh_bot_ext, cols, MPI_DOUBLE, bot_neigh, 0, world, &ee_reqs[req_i++]);
+		
+		/* compute */
+		tmp = matrix + 2 * cols;
+		for (int i = 0; i < internal_matrix_size; ++i)
+			heavy_op(tmp);
+		/* wait for exchange external to appear */
+		MPI_Waitall(4, ee_reqs, ee_stats);
+
+		/* compute externals */
+		tmp = my_top_ext;
+		for (int i = 0; i < cols; ++i)
+			heavy_op(tmp);
+
+		tmp = my_bot_ext;
+		for (int i = 0; i < cols; ++i)
+			heavy_op(tmp);
+
+		MPI_Barrier(world);
+	}
 
 	/* recovery if needec */
-
+	
+	TOCK(time1);
+	if(0 == rank)
+		cout << "total time is " << time1 << endl;
 cleanup:
+
+	if(matrix)
+		free(matrix);
 	MPI_Finalize();
-    return 0;
+	return 0;
 }
 
 

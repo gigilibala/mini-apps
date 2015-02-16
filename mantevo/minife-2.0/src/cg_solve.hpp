@@ -174,8 +174,11 @@ cg_solve(OperatorType& A,
     p_ap_dot = matvec_and_dot(A, p, Ap);
     TOCK(tMATVECDOT);
 #else
+	/* the place that magic exchage externals happen */
+	/* Here put the tryblock start. does not need to go before this. Do the data
+	 * exchange and checkpointing here too. */
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
-
+	/* Here we should put the tryblock finish */
     TICK(); p_ap_dot = dot(Ap, p); TOCK(tDOT);
 #endif
 
