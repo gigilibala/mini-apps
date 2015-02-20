@@ -21,10 +21,10 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-		
+	int rc;
 	int rank, size;
-	MPI_Comm world = MPI_COMM_WORLD, world_dup;
-	int matrix_size = 0, rows, cols, internal_matrix_size;
+	MPI_Comm world = MPI_COMM_WORLD, world_dup, new_world;
+	int matrix_size = 0, rows, cols, internal_matrix_size, my_matrix_size;
 	double time1, time2, time3;
 	double *matrix = NULL, *tmp;
 	double *neigh_top_ext, *neigh_bot_ext, *my_top_ext, *my_bot_ext;
@@ -33,15 +33,18 @@ int main(int argc, char *argv[])
 	MPI_Request ee_reqs[4];
 	MPI_Status  ee_stats[4];
 
-	MPI_Request tb_req1, tb_req2,  dup_req,  barrier_req;
-	MPI_Status tb_stat1, tb_stat2, dup_stat, barrier_stat;
+	MPI_Request tb_req1,  tb_req2,  dup_req,  barrier_req,  shrink_req;
+	MPI_Status  tb_stat1, tb_stat2, dup_stat, barrier_stat, shrink_stat;
 	/* initiate the random number generator */
 	srand(time(NULL));
 
+	MPI_Timeout reqs_timeout, tb_timeout;
+	
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(world, &rank);
 	MPI_Comm_size(world, &size);
-	
+	MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
+
 	if(argc < 3){
 		if(rank == 0)
 			cout << "usage: stencil_1d.x <rows> <cols> <max_iter>" << endl;
@@ -61,6 +64,7 @@ int main(int argc, char *argv[])
 	/* create and setup the random matrix */
 	matrix_size = (rows + 2) * cols;
 	internal_matrix_size = (rows - 2) * cols;
+	my_matrix_size = rows * cols;
 	matrix = (double*)malloc(sizeof(double) * matrix_size);
 	tmp = matrix;
 	assert(tmp);
@@ -79,7 +83,9 @@ int main(int argc, char *argv[])
 	top_neigh = (rank-1+size)%size;
 	bot_neigh = (rank+1)%size;
 	
-
+	MPI_Timeout_set_seconds(&tb_timeout, 1.0);
+	MPI_Timeout_set_seconds(&reqs_timeout, 2.0);
+	
 	/* make sure everyone is here */
 	MPI_Ibarrier(world, &barrier_req);
 	MPI_Wait(&barrier_req, &barrier_stat);
@@ -88,7 +94,7 @@ int main(int argc, char *argv[])
 	/* for loop for processing iterations*/
 	for (int iter = 0; iter < max_iter; ++iter){
 
-		if(!(iter % 20) && 0 == rank)
+		if(0 == rank)
 			cout << "iter " << iter << endl;
 
 		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req1);
@@ -105,29 +111,48 @@ int main(int argc, char *argv[])
 		MPI_Isend(neigh_bot_ext, cols, MPI_DOUBLE, bot_neigh, 0, world, &ee_reqs[req_i++]);
 		
 		/* compute */
-		tmp = matrix + 2 * cols;
-		for (int i = 0; i < internal_matrix_size; ++i)
-			heavy_op(tmp);
-		/* wait for exchange external to appear */
-		MPI_Waitall(4, ee_reqs, ee_stats);
-
-		/* compute externals */
 		tmp = my_top_ext;
-		for (int i = 0; i < cols; ++i)
+		for (int i = 0; i < my_matrix_size; ++i)
 			heavy_op(tmp);
 
-		tmp = my_bot_ext;
-		for (int i = 0; i < cols; ++i)
-			heavy_op(tmp);
+		assert(MPI_SUCCESS ==
+			   MPI_Tryblock_finish_local(tb_req1, 4, ee_reqs, reqs_timeout));
+		rc = MPI_Wait_local(&tb_req1, &tb_stat1, tb_timeout);
+		
+		/* recovery if needed */
+		if(MPI_SUCCESS != rc){
 
-		MPI_Tryblock_finish(tb_req1, 0, NULL);
-		MPI_Wait(&tb_req1, &tb_stat1);
-//		MPI_Ibarrier(world, &barrier_req);
-//		MPI_Wait(&barrier_req, &barrier_stat);
-	
+			switch(rc){
+			case MPI_ERR_TRYBLOCK_FAILED:
+				if(0 == rank)
+					cout << "tryblock failed, about to shrink\n" << endl;
+				
+				MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req2);
+				MPI_Comm_ishrink(world, &new_world, &shrink_req);
+				assert(MPI_SUCCESS ==
+					   MPI_Tryblock_finish_local(tb_req1, 1, &shrink_req, reqs_timeout));
+				rc = MPI_Wait_local(&tb_req2, &tb_stat2, tb_timeout);
+				if(MPI_SUCCESS != rc){
+					cout << "tryblock failed in shrink!" << endl;
+					goto cleanup;
+				}
+				break;
+			case MPI_ERR_TIMEOUT:
+				if(0 == rank)
+					cout << "tryblock timedout\n" << endl;
+				break;
+			}
+		} else {
+			for (int i = 0; i < 4; ++i)
+				MPI_Request_free(&ee_reqs[i]);
+			MPI_Request_free(&tb_req1);
+
+
+		}
+		
+		
 	}
 
-	/* recovery if needec */
 	
 	TOCK(time1);
 	if(0 == rank)
