@@ -1,29 +1,32 @@
-exec_file=stencil_1d.x
+# COPYRIGHT @ Amin Hassani 2015
+TARGET=stencil_1d.x
 CXX=mpicxx
 CC=mpicc
 
 #OBJS=$(patsubst %.cpp,%.o,$(SOURCES))
 OBJS= main.o
 
-CFLAGS   = -O3 -g
+CFLAGS   = -O2 -g
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. 
-LDFLAGS  =
-LIBS     =
+LDFLAGS  = 
+FTLIB    = ../../ftlib/ftlib.a
+LIBS     = $(FTLIB)
 
+# MAKEFILES = ../../ftlib
 
-all: $(exec_file)
+all: $(FTLIB) $(TARGET)
 
-$(exec_file): $(OBJS)
+$(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)  $(LIBS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $<
 
 install: all
-	cp $(exec_file) ../../bin/
+	cp $(TARGET) ../../bin/
 
 clean: 
-	rm $(exec_file) *.o
+	rm $(TARGET) *.o
 
-.PHONY: all clean install
+.PHONY: all clean install ftlib
