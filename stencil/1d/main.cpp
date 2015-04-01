@@ -13,7 +13,7 @@
 
 //#define DEBUG 1
 
-#define WITH_FA 0
+#define WITH_FA 1
 
 static inline void mult_div_op(double *value)
 {
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	
 	MPI_Comm_rank(world, &rank);
 	MPI_Comm_size(world, &size);
-	size--;
+	size-=3;
 
 //	MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
 	

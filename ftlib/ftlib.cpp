@@ -61,9 +61,15 @@ retry_tb:
 
 	if(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc){
 		cout << "shrink failed with error: " << get_error_string(rc) << endl;
-
+		int test;
+		MPI_Test(&shrink_req, &test, &shrink_stat);
+		if(test)
+			cout << "shrink had no problem" << endl;
+		else
+			std::cout << "shrink had problems" << std::endl;
 		if(--max_retries > 0){
 			cout << "going to retry" << endl;
+			MPI_Request_free(&tb_req);
 			MPI_Comm_free(&newcomm);
 			goto retry;
 		}else{
@@ -73,6 +79,8 @@ retry_tb:
 	}
 
 	*comm = newcomm;
+	MPI_Request_free(&tb_req);
+	MPI_Request_free(&shrink_req);
 	return 0;
 }
 
