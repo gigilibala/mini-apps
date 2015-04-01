@@ -8,8 +8,8 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include <assert.h>
-#include "../helper/helper.hpp"
-#include "../../ftlib/ftlib.hpp"
+#include <helper.hpp>
+#include <ftlib.hpp>
 
 //#define DEBUG 1
 

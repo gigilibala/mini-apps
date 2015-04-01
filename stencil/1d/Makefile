@@ -8,7 +8,7 @@ OBJS= main.o
 
 CFLAGS   = -O0 -g
 CPPFLAGS = $(CFLAGS) 
-CXXFLAGS = -I. 
+CXXFLAGS = -I. -I../../ftlib/
 LDFLAGS  = 
 FTLIB    = ../../ftlib/ftlib.a
 LIBS     = $(FTLIB)
