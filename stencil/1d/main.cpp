@@ -9,9 +9,11 @@
 #include <mpi-ext.h>
 #include <assert.h>
 #include "../helper/helper.hpp"
-
+#include "../../ftlib/ftlib.hpp"
 
 //#define DEBUG 1
+
+#define WITH_FA 0
 
 static inline void mult_div_op(double *value)
 {
@@ -27,7 +29,7 @@ int main(int argc, char *argv[])
 {
 	int rc;
 	int rank, size;
-	MPI_Comm world = MPI_COMM_WORLD, world_dup, new_world;
+	MPI_Comm world, world_dup, new_world;
 	int matrix_size = 0, rows, cols, internal_matrix_size, my_matrix_size;
 	double time1, time2, time3;
 	double *matrix = NULL, *tmp;
@@ -44,21 +46,27 @@ int main(int argc, char *argv[])
 
 	MPI_Timeout reqs_timeout, tb_timeout;
 	bool iam_alive = true;
-
-	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(world, &rank);
-	MPI_Comm_size(world, &size);
-	MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
+	bool reserved = false;
 
 	if(argc < 3){
 		if(rank == 0)
 			cout << "usage: stencil_1d.x <rows> <cols> <max_iter> <failed_rank1> <failed_rank2> ..." << endl;
-		goto cleanup;
+		return 0;
 	}
 
+	MPI_Init(&argc, &argv);
+
+	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+
 	/* duplicating communciator for now */
-	MPI_Comm_idup(world, &world_dup, &dup_req);
+	MPI_Comm_idup(MPI_COMM_WORLD, &world, &dup_req);
 	MPI_Wait(&dup_req, &dup_stat);
+	
+	MPI_Comm_rank(world, &rank);
+	MPI_Comm_size(world, &size);
+	size--;
+
+//	MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
 	
 	/* input processing */
 	rows = atoi(argv[1]);
@@ -93,7 +101,7 @@ int main(int argc, char *argv[])
 	bot_neigh = (rank+1)%size;
 	
 	MPI_Timeout_set_seconds(&tb_timeout, 1.0);
-	MPI_Timeout_set_seconds(&reqs_timeout, 2.0);
+	MPI_Timeout_set_seconds(&reqs_timeout, 1.0);
 	
 	/* make sure everyone is here */
 	MPI_Ibarrier(world, &barrier_req);
@@ -114,13 +122,16 @@ int main(int argc, char *argv[])
 	/* for loop for processing iterations*/
 	for (int iter = 0; iter < max_iter; ++iter){
 
-		if(0 == rank && 0 == iter%20)
-			cout << "iter " << iter << endl;
-
+		if(0 == rank && 0 == iter%1)
+			cout << "iter " << iter << ',' << rank << ']' << endl;
+#if WITH_FA
 		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req1);
-
-		/* exchange externals */
+#endif
 		int req_i = 0;
+
+		if(rank >= size)
+			goto skip;
+		/* exchange externals */
 		/* recv from top */
 		MPI_Irecv(neigh_top_ext, cols, MPI_DOUBLE, top_neigh, 0, world, &ee_reqs[req_i++]);
 		/* recv from bottom */
@@ -130,50 +141,56 @@ int main(int argc, char *argv[])
 		/* send to bottom */
 		MPI_Isend(neigh_bot_ext, cols, MPI_DOUBLE, bot_neigh, 0, world, &ee_reqs[req_i++]);
 		
+	skip:
 		/* compute */
 		tmp = my_top_ext;
 		for (int i = 0; i < my_matrix_size; ++i)
 			heavy_op(tmp);
 
+#if WITH_FA
+	retry:
 		assert(MPI_SUCCESS ==
-			   MPI_Tryblock_finish_local(tb_req1, 4, ee_reqs, reqs_timeout));
+			   MPI_Tryblock_finish_local(tb_req1, req_i, ee_reqs, reqs_timeout));
 		rc = MPI_Wait_local(&tb_req1, &tb_stat1, tb_timeout);
 		
 		/* recovery if needed */
-		if(MPI_SUCCESS != rc){
-
-			switch(rc){
-			case MPI_ERR_TRYBLOCK_FAILED:
-				if(0 == rank)
-					cout << "tryblock failed, about to shrink\n" << endl;
-				
-				MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req2);
-				MPI_Comm_ishrink(world, &new_world, &shrink_req);
-				assert(MPI_SUCCESS ==
-					   MPI_Tryblock_finish_local(tb_req2, 1, &shrink_req, reqs_timeout));
-				rc = MPI_Wait_local(&tb_req2, &tb_stat2, tb_timeout);
-				if(MPI_SUCCESS != rc){
-					cout << "tryblock failed in shrink!" << endl;
-					goto cleanup;
-				}else{
-					int rank1, size1;
-					MPI_Comm_rank(new_world, &rank1);
-					MPI_Comm_size(new_world, &size1);
-					cout << "(" << rank << "," << rank1 << ") new tryblock with size " << size << endl;
-				}
-				break;
-			case MPI_ERR_TIMEOUT:
-				if(0 == rank)
-					cout << "tryblock timedout\n" << endl;
-				break;
-			}
-		} else {
-			for (int i = 0; i < 4; ++i)
-				MPI_Request_free(&ee_reqs[i]);
-			MPI_Request_free(&tb_req1);
+		if(MPI_ERR_TIMEOUT == rc){
+			cout << rank << " tryblock timedout, have to retry" << endl;
+			goto retry;
 		}
+		if(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc){
+
+			int error_codes = MPI_ERR_PROC_FAILED;
+			MPI_Comm comms[1];
+			int comm_count;
+			MPI_Get_failed_communicators(tb_req1, 1, &error_codes, 1, comms, &comm_count);
+
+			
+			cout << rank << " tryblock failed with " << comm_count <<
+				" communicators failed, about to shrink" << endl;
+
+			MPI_Comm comm;
+			fampi_repair_comm_shrink(world, &comm);
+			MPI_Comm_free(&world);
+			world = comm;
+			MPI_Comm_rank(world, &rank);
+			MPI_Comm_size(world, &size);
+			top_neigh = (rank-1+size)%size;
+			bot_neigh = (rank+1)%size;
+			
+		}
+		if(MPI_ERR_TIMEOUT == rc ||
+		   MPI_ERR_TRANSIENT == rc ||
+		   MPI_ERR_PERMANENT == rc)
+			cout << "unhandled failure" << endl;
+				
+		for (int i = 0; i < req_i; ++i)
+			MPI_Request_free(&ee_reqs[i]);
+		MPI_Request_free(&tb_req1);
+#else
+		rc = MPI_Waitall(req_i, ee_reqs, MPI_STATUS_IGNORE);
+#endif
 	}
-	
 	TOCK(time1);
 	if(0 == rank)
 		cout << "total time is " << time1 << endl;

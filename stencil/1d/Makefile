@@ -6,7 +6,7 @@ CC=mpicc
 #OBJS=$(patsubst %.cpp,%.o,$(SOURCES))
 OBJS= main.o
 
-CFLAGS   = -O2 -g
+CFLAGS   = -O0 -g
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. 
 LDFLAGS  = 
