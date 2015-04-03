@@ -29,6 +29,8 @@
 //@HEADER
 
 #include <vector>
+#include <string.h>
+#include <assert.h>
 
 namespace miniFE {
 
@@ -58,8 +60,49 @@ struct Vector {
   GlobalOrdinal startIndex;
   LocalOrdinal local_size;
   std::vector<Scalar> coefs;
-};
 
+	int checkpoint_write(char* buffer, int buf_size){
+		char* buf = buffer;
+		int size = 0;
+		int tmp_size;
+		size += 3 * sizeof(int);
+		size += coefs.size()*sizeof(Scalar);
+		if(NULL == buf)
+			return size;
+
+		*(int*)buf = startIndex;          buf += sizeof(int);
+		*(int*)buf = local_size;          buf += sizeof(int);
+		
+		tmp_size = sizeof(Scalar)*coefs.size();
+		*(int*)buf = tmp_size;            buf += sizeof(int);
+		memcpy(buf, (void*)&coefs[0], tmp_size);   buf += tmp_size;
+//		std::cout << buf-buffer << " " << size
+//				  << " "  << coefs.size() << std::endl;
+		assert(buf-buffer == size);
+		return size;
+	}
+
+	int checkpoint_read(char* buffer, int buf_size){
+		char* buf = buffer;
+		int size = 0;
+		int tmp_size;
+		if(NULL == buf)
+			return size;
+
+		startIndex = *(int*)buf;          buf += sizeof(int);
+		local_size = *(int*)buf;          buf += sizeof(int);
+
+		tmp_size = *(int*)buf;            buf += sizeof(int);
+		coefs.resize(tmp_size/sizeof(Scalar));  
+		memcpy((void*)&coefs[0], buf, tmp_size);   buf += tmp_size;
+
+		size = checkpoint_write(NULL, 0);
+//		std::cout << buf-buffer << " " << size << " "
+//				  << tmp_size/sizeof(Scalar) << std::endl;
+		assert(buf-buffer == size);
+		return size;
+	}
+};
 
 }//namespace miniFE
 

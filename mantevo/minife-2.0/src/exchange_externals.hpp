@@ -191,7 +191,8 @@ begin_exchange_externals(MatrixType& A,
   const std::vector<int>& neighbors = A.neighbors;
   const std::vector<GlobalOrdinal>& elements_to_send = A.elements_to_send;
 
-  std::vector<Scalar> send_buffer(elements_to_send.size(), 0);
+//  std::vector<Scalar> send_buffer(elements_to_send.size(), 0);
+//  std::vector<Scalar> send_buffer = A.send_buffer;
 
   //
   // first post receives, these are immediate receives
@@ -229,13 +230,13 @@ begin_exchange_externals(MatrixType& A,
   //
 
   size_t total_to_be_sent = elements_to_send.size();
-  for(size_t i=0; i<total_to_be_sent; ++i) send_buffer[i] = x.coefs[elements_to_send[i]];
+  for(size_t i=0; i<total_to_be_sent; ++i) A.send_buffer[i] = x.coefs[elements_to_send[i]];
 
   //
   // Send to each neighbor
   //
 
-  Scalar* s_buffer = &send_buffer[0];
+  Scalar* s_buffer = &A.send_buffer[0];
 
   for(int i=0; i<num_neighbors; ++i) {
     int n_send = send_length[i];
@@ -248,6 +249,8 @@ begin_exchange_externals(MatrixType& A,
 #endif	// USING_FAMPI
     s_buffer += n_send;
   }
+//  MPI_Waitall(num_neighbors, &exch_ext_requests[num_neighbors], MPI_STATUS_IGNORE);
+
 #endif
 }
 

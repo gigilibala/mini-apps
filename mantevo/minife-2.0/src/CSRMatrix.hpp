@@ -31,6 +31,9 @@
 #include <cstddef>
 #include <vector>
 #include <algorithm>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
@@ -62,12 +65,12 @@ CSRMatrix {
   typedef GlobalOrdinal GlobalOrdinalType;
 
   bool                       has_local_indices;
+  LocalOrdinal               num_cols;
   std::vector<GlobalOrdinal> rows;
   std::vector<LocalOrdinal>  row_offsets;
   std::vector<LocalOrdinal>  row_offsets_external;
   std::vector<GlobalOrdinal> packed_cols;
   std::vector<Scalar>        packed_coefs;
-  LocalOrdinal               num_cols;
 
 #ifdef HAVE_MPI
   std::vector<GlobalOrdinal> external_index;
@@ -80,6 +83,178 @@ CSRMatrix {
   std::vector<MPI_Request>   request;
 #endif
 
+	int checkpoint_size()
+	{
+		int size = 0;
+		size += sizeof(bool);
+		size += sizeof(LocalOrdinal);
+
+		size += sizeof(GlobalOrdinal)* rows.size();
+		size += sizeof(LocalOrdinal)*  row_offsets.size();
+		size += sizeof(LocalOrdinal)*  row_offsets_external.size();
+		size += sizeof(GlobalOrdinal)* packed_cols.size();
+		size += sizeof(Scalar)*        packed_coefs.size();
+		
+#ifdef HAVE_MPI
+		size += sizeof(GlobalOrdinal)* external_index.size();
+		size += sizeof(GlobalOrdinal)* external_local_index.size();
+		size += sizeof(GlobalOrdinal)* elements_to_send.size();
+		size += sizeof(int)*           neighbors.size();
+		size += sizeof(LocalOrdinal)*  recv_length.size();
+		size += sizeof(LocalOrdinal)*  send_length.size();
+//		size += sizeof(Scalar)*        send_buffer.size();
+//		size += sizeof(MPI_Request)*   request.size();
+#endif
+		size += sizeof(int)*           11;
+		return size;
+	}
+	
+	int checkpoint_write(char* buffer, int buf_size){
+		char* buf = buffer;
+		int tmp_size = 0;
+		int size = checkpoint_size();
+		if(buffer == NULL)
+			return size;
+
+		assert(size <= buf_size);
+		
+		*(bool*)buf = has_local_indices;          buf += sizeof(bool);
+		*(LocalOrdinal*)buf = num_cols;           buf += sizeof(LocalOrdinal);
+
+		tmp_size = sizeof(GlobalOrdinal)*rows.size();
+		*(int*)buf = tmp_size;                 buf += sizeof(int);
+		memcpy(buf, (void*)&rows[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(LocalOrdinal)*row_offsets.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&row_offsets[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(LocalOrdinal)*row_offsets_external.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&row_offsets_external[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(GlobalOrdinal)*packed_cols.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&packed_cols[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(Scalar)*packed_coefs.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&packed_coefs[0], tmp_size);   buf += tmp_size;
+
+#ifdef HAVE_MPI
+		tmp_size = sizeof(GlobalOrdinal)*external_index.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&external_index[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(GlobalOrdinal)*external_local_index.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&external_local_index[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(GlobalOrdinal)*elements_to_send.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&elements_to_send[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(int)*neighbors.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&neighbors[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(LocalOrdinal)*recv_length.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&recv_length[0], tmp_size);   buf += tmp_size;
+
+		tmp_size = sizeof(LocalOrdinal)*send_length.size();
+		*(int*)buf = tmp_size          ;          buf += sizeof(int);
+		memcpy(buf, (void*)&send_length[0], tmp_size);   buf += tmp_size;
+
+#endif
+
+		assert(buf-buffer == size);
+		return size;
+	}
+
+	int checkpoint_read(char* buffer, int buf_size){
+		char* buf = buffer;
+		int tmp_size = 0;
+		
+		has_local_indices = *(bool*)buf;          buf += sizeof(bool);
+//		std::cout << has_local_indices << std::endl;
+		num_cols = *(LocalOrdinal*)buf;           buf += sizeof(LocalOrdinal);
+//		std::cout << num_cols << std::endl;
+
+		tmp_size = *(int*)buf;
+//		std::cout << tmp_size/sizeof(GlobalOrdinal) << std::endl;
+		rows.resize(tmp_size/sizeof(GlobalOrdinal));                buf += sizeof(int);
+		memcpy((void*)&rows[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		row_offsets.resize(tmp_size/sizeof(LocalOrdinal));          buf += sizeof(int);
+		memcpy((void*)&row_offsets[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		row_offsets_external.resize(tmp_size/sizeof(LocalOrdinal)); buf += sizeof(int);
+		memcpy((void*)&row_offsets_external[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		packed_cols.resize(tmp_size/sizeof(GlobalOrdinal));         buf += sizeof(int);
+		memcpy((void*)&packed_cols[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		packed_coefs.resize(tmp_size/sizeof(Scalar));                 buf += sizeof(int);
+		memcpy((void*)&packed_coefs[0], buf, tmp_size);   buf += tmp_size;
+
+#ifdef HAVE_MPI
+		tmp_size = *(int*)buf;
+		external_index.resize(tmp_size/sizeof(GlobalOrdinal));       buf += sizeof(int);
+		memcpy((void*)&external_index[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		external_local_index.resize(tmp_size/sizeof(GlobalOrdinal)); buf += sizeof(int);
+		memcpy((void*)&external_local_index[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		elements_to_send.resize(tmp_size/sizeof(GlobalOrdinal));     buf += sizeof(int);
+		memcpy((void*)&elements_to_send[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		neighbors.resize(tmp_size/sizeof(int));            buf += sizeof(int);
+		memcpy((void*)&neighbors[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		recv_length.resize(tmp_size/sizeof(LocalOrdinal));          buf += sizeof(int);
+		memcpy((void*)&recv_length[0], buf, tmp_size);   buf += tmp_size;
+
+		tmp_size = *(int*)buf;
+		send_length.resize(tmp_size/sizeof(LocalOrdinal));          buf += sizeof(int);
+		memcpy((void*)&send_length[0], buf, tmp_size);   buf += tmp_size;
+#endif
+
+		assert(buf-buffer == checkpoint_size());
+		return buf-buffer;
+	}
+
+
+	
+	
+	void print_sizes(){
+		std::cout << "has_local_indices: " << has_local_indices << std::endl;
+		std::cout << "rows: " << rows.size() << std::endl;
+		std::cout << "row_offsets: " << row_offsets.size() << std::endl;
+		std::cout << "row_offsets_external: " << row_offsets_external.size() << std::endl;
+		std::cout << "packed_cols: " << packed_cols.size() << std::endl;
+		std::cout << "packed_coefs: " << packed_coefs.size() << std::endl;
+		std::cout << "num_cols: " << num_cols << std::endl;
+#ifdef HAVE_MPI
+		std::cout << "external_index: " << external_index.size() << std::endl;
+		std::cout << "external_local_index: " << external_local_index.size() << std::endl;
+		std::cout << "elements_to_send: " << elements_to_send.size() << std::endl;
+		std::cout << "neighbors: " << neighbors.size() << std::endl;
+		std::cout << "recv_length: " << recv_length.size() << std::endl;
+		std::cout << "send_length: " << send_length.size() << std::endl;
+		std::cout << "send_buffer: " << send_buffer.size() << std::endl;
+		std::cout << "request: " << request.size() << std::endl;
+#endif
+	}
+	
   size_t num_nonzeros() const
   {
     return row_offsets[row_offsets.size()-1];

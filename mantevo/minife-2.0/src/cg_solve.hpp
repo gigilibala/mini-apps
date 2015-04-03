@@ -33,6 +33,7 @@
 
 #include <Vector_functions.hpp>
 #include <mytimer.hpp>
+#include <checkpoint.hpp>
 
 #include <outstream.hpp>
 
@@ -148,8 +149,30 @@ cg_solve(OperatorType& A,
   os << "brkdown_tol = " << brkdown_tol << std::endl;
 #endif
 
-
   for(LocalOrdinalType k=1; k <= max_iter && normr > tolerance; ++k) {
+	  /* things do we need to save here:
+		 k
+		 rtrans
+		 oldrtrans
+		 p
+		 r
+		 A
+	   */
+
+  if(0 == myproc && k == 1){
+	  A.print_sizes();
+
+	  int csize = checkpoint_write(k, rtrans, oldrtrans, p, r, A, NULL, 0);
+	  char buf[csize];
+	  checkpoint_write(k, rtrans, oldrtrans, p, r, A, buf, csize);
+	  checkpoint_read(k, rtrans, oldrtrans, p, r, A, buf, csize);
+	  A.print_sizes();
+
+
+  }
+  int buf_size;
+  int size = checkpoint_write(k, rtrans, oldrtrans, p, r, A, NULL, 0);
+	  
     if (k == 1) {
       TICK(); waxpby(one, r, zero, r, p); TOCK(tWAXPY);
     }
@@ -174,6 +197,7 @@ cg_solve(OperatorType& A,
     p_ap_dot = matvec_and_dot(A, p, Ap);
     TOCK(tMATVECDOT);
 #else
+
 	/* the place that magic exchage externals happen */
 	/* Here put the tryblock start. does not need to go before this. Do the data
 	 * exchange and checkpointing here too. */

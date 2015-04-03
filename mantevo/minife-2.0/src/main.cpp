@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
   //etc., change these template-parameters by changing the macro definitions in
   //the makefile or on the make command-line.
 
+  
   int return_code =
      miniFE::driver< MINIFE_SCALAR, MINIFE_LOCAL_ORDINAL, MINIFE_GLOBAL_ORDINAL>(global_box, my_box, params, doc);
 
