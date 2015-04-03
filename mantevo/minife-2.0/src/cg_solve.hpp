@@ -156,7 +156,7 @@ cg_solve(OperatorType& A,
 		 oldrtrans
 		 p
 		 r
-		 A
+ 		 A
 	   */
 
   if(0 == myproc && k == 1){
