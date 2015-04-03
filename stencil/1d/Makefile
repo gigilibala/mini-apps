@@ -6,16 +6,19 @@ CC=mpicc
 #OBJS=$(patsubst %.cpp,%.o,$(SOURCES))
 OBJS= main.o
 
-CFLAGS   = -O0 -g
+CFLAGS   = -O0 
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. -I../../ftlib/
 LDFLAGS  = 
-FTLIB    = ../../ftlib/ftlib.a
+FTLIB    = -L ../../ftlib -lfa_mpi
 LIBS     = $(FTLIB)
 
-# MAKEFILES = ../../ftlib
+USRPATH := $(shell echo $(USRPATH))
 
-all: $(FTLIB) $(TARGET)
+OPTIONS  = 
+
+
+all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)  $(LIBS)
@@ -24,9 +27,9 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $<
 
 install: all
-	cp $(TARGET) ../../bin/
+	cp $(TARGET) $(USRPATH)/bin
 
 clean: 
 	rm $(TARGET) *.o
 
-.PHONY: all clean install ftlib
+.PHONY: all clean install 
