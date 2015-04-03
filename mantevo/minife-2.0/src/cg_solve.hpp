@@ -167,9 +167,8 @@ cg_solve(OperatorType& A,
 	  checkpoint_write(k, rtrans, oldrtrans, p, r, A, buf, csize);
 	  checkpoint_read(k, rtrans, oldrtrans, p, r, A, buf, csize);
 	  A.print_sizes();
-
-
   }
+
   int buf_size;
   int size = checkpoint_write(k, rtrans, oldrtrans, p, r, A, NULL, 0);
 	  
