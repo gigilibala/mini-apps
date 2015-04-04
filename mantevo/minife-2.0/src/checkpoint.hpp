@@ -4,6 +4,13 @@
 
 namespace miniFE{
 	
+class Checkpoint{
+
+	Checkpoint(){/* do nothing */}
+	~Checkpoint(){/* do nothing */}
+
+
+	
 	template<typename MatrixType, typename VectorType, typename Scalar>
 	int checkpoint_write(int k, Scalar rtrans, Scalar oldrtrans, 
 						 VectorType& p,
@@ -61,6 +68,7 @@ namespace miniFE{
 		assert(buf - buffer == size);
 		return buf - buffer;
 	}
+};
 
 }
 #endif
