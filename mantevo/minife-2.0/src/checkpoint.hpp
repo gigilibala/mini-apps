@@ -55,11 +55,11 @@ public:
 //		remote_checkpoint_buf[0] = (char*)malloc(max_size);
 //		remote_checkpoint_buf[1] = (char*)malloc(max_size);
 //		if(NULL == remote_checkpoint_buf[0] || NULL == remote_checkpoint_buf[1]){
-//			MPI_Abort(MPI_COMM_WORLD, 0);
+//			MPI_Abort(FTComm::get_instance()->get_world_comm(), 0);
 //		}
 //		my_checkpoint_buf = (char*)malloc(max_size);
 //		if(NULL == my_checkpoint_buf){
-//			MPI_Abort(MPI_COMM_WORLD, 0);
+//			MPI_Abort(FTComm::get_instance()->get_world_comm(), 0);
 //		}
 
 		

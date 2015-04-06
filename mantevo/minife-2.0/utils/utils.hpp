@@ -32,6 +32,7 @@
 #include <cmath>
 #include <vector>
 #include <map>
+#include <ft_comm.hpp>
 
 #ifdef HAVE_MPI
 #include <mpi.h>
@@ -84,8 +85,8 @@ void get_global_min_max(GlobalOrdinal local_n,
 //
   int numprocs = 1, myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #endif
 
   std::vector<GlobalOrdinal> all_n(numprocs, 0);
@@ -93,7 +94,7 @@ void get_global_min_max(GlobalOrdinal local_n,
 #ifdef HAVE_MPI
   std::vector<GlobalOrdinal> tmp(all_n);
   MPI_Datatype mpi_dtype = TypeTraits<GlobalOrdinal>::mpi_type();
-  MPI_Allreduce(&tmp[0], &all_n[0], numprocs, mpi_dtype, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(&tmp[0], &all_n[0], numprocs, mpi_dtype, MPI_MAX, FTComm::get_instance()->get_world_comm());
 #endif
 
   global_n = 0;
@@ -129,8 +130,8 @@ Scalar compute_std_dev_as_percentage(Scalar local_nrows,
 //
 #ifdef HAVE_MPI
   int numprocs = 1, myproc = 0;
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
   MPI_Datatype mpi_dtype = TypeTraits<Scalar>::mpi_type();
 
 //If it's significantly more efficient, we may consider using MPI_Gather below instead of
@@ -139,7 +140,7 @@ Scalar compute_std_dev_as_percentage(Scalar local_nrows,
 //(But for now, use MPI_Allgather and compute on all procs.)
 
   std::vector<Scalar> all_nrows(numprocs, 0);
-  MPI_Allgather(&local_nrows, 1, mpi_dtype, &all_nrows[0], 1, mpi_dtype, MPI_COMM_WORLD);
+  MPI_Allgather(&local_nrows, 1, mpi_dtype, &all_nrows[0], 1, mpi_dtype, FTComm::get_instance()->get_world_comm());
 
   //turn all_nrows contents into deviations, add to sum-of-squares-of-deviations:
   Scalar sum_sqr_dev = 0;

@@ -45,8 +45,8 @@ make_local_matrix(MatrixType& A)
 {
 #ifdef HAVE_MPI
   int numprocs = 1, myproc = 0;
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 
   if (numprocs < 2) {
     A.num_cols = A.rows.size();
@@ -127,7 +127,7 @@ make_local_matrix(MatrixType& A)
 
   MPI_Datatype mpi_dtype = TypeTraits<GlobalOrdinal>::mpi_type();
   MPI_Allreduce(&tmp_buffer[0], &global_index_offsets[0], numprocs, mpi_dtype,
-                MPI_SUM, MPI_COMM_WORLD);
+                MPI_SUM, FTComm::get_instance()->get_world_comm());
 
   // Go through list of externals and find the processor that owns each
   std::vector<int> external_processor(num_external);
@@ -214,7 +214,7 @@ make_local_matrix(MatrixType& A)
   /// sum over all processor all the tmp_neighbors arrays ///
 
   MPI_Allreduce(&tmp_neighbors[0], &tmp_buffer[0], numprocs, mpi_dtype,
-                MPI_SUM, MPI_COMM_WORLD);
+                MPI_SUM, FTComm::get_instance()->get_world_comm());
 
   // decode the combined 'tmp_neighbors' (stored in tmp_buffer)
   // array from all the processors
@@ -257,14 +257,14 @@ make_local_matrix(MatrixType& A)
   std::vector<MPI_Request> request(num_send_neighbors);
   for(int i=0; i<num_send_neighbors; ++i) {
     MPI_Irecv(&tmp_buffer[i], 1, mpi_dtype, MPI_ANY_SOURCE, MPI_MY_TAG,
-              MPI_COMM_WORLD, &request[i]);
+              FTComm::get_instance()->get_world_comm(), &request[i]);
   }
 
   // send messages
 
   for(int i=0; i<num_recv_neighbors; ++i) {
     MPI_Send(&tmp_buffer[i], 1, mpi_dtype, recv_list[i], MPI_MY_TAG,
-             MPI_COMM_WORLD);
+             FTComm::get_instance()->get_world_comm());
   }
 
   ///
@@ -275,7 +275,7 @@ make_local_matrix(MatrixType& A)
   for(int i=0; i<num_send_neighbors; ++i) {
     if (MPI_Wait(&request[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
-      MPI_Abort(MPI_COMM_WORLD, -1);
+      MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);
     }
     send_list[i] = status.MPI_SOURCE;
   }
@@ -331,7 +331,7 @@ make_local_matrix(MatrixType& A)
 
   for(int i=0; i<num_recv_neighbors; ++i) {
     int partner = recv_list[i];
-    MPI_Irecv(&lengths[i], 1, MPI_INT, partner, MPI_MY_TAG, MPI_COMM_WORLD,
+    MPI_Irecv(&lengths[i], 1, MPI_INT, partner, MPI_MY_TAG, FTComm::get_instance()->get_world_comm(),
               &request[i]);
   }
 
@@ -363,7 +363,7 @@ make_local_matrix(MatrixType& A)
     neighbors[i] = recv_list[i];
 
     length = j - start;
-    MPI_Send(&length, 1, MPI_INT, recv_list[i], MPI_MY_TAG, MPI_COMM_WORLD);
+    MPI_Send(&length, 1, MPI_INT, recv_list[i], MPI_MY_TAG, FTComm::get_instance()->get_world_comm());
   }
 
   // Complete the receives of the number of externals
@@ -371,7 +371,7 @@ make_local_matrix(MatrixType& A)
   for(int i=0; i<num_recv_neighbors; ++i) {
     if (MPI_Wait(&request[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
-      MPI_Abort(MPI_COMM_WORLD, -1);
+      MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);
     }
     send_length[i] = lengths[i];
   }
@@ -386,7 +386,7 @@ make_local_matrix(MatrixType& A)
   j = 0;
   for(int i=0; i<num_recv_neighbors; ++i) {
     MPI_Irecv(&A.elements_to_send[j], send_length[i], mpi_dtype, neighbors[i],
-              MPI_MY_TAG, MPI_COMM_WORLD, &request[i]);
+              MPI_MY_TAG, FTComm::get_instance()->get_world_comm(), &request[i]);
     j += send_length[i];
   }
 
@@ -406,7 +406,7 @@ make_local_matrix(MatrixType& A)
       if (j == num_external) break;
     }
     MPI_Send(&new_external[start], j-start, mpi_dtype, recv_list[i],
-             MPI_MY_TAG, MPI_COMM_WORLD);
+             MPI_MY_TAG, FTComm::get_instance()->get_world_comm());
   }
 
   // receive from each neighbor the global index list of external elements
@@ -414,7 +414,7 @@ make_local_matrix(MatrixType& A)
   for(int i=0; i<num_recv_neighbors; ++i) {
     if (MPI_Wait(&request[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
-      MPI_Abort(MPI_COMM_WORLD, -1);
+      MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);
     }
   }
 

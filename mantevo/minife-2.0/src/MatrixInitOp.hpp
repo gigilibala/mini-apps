@@ -33,8 +33,8 @@
 
 #include <CSRMatrix.hpp>
 #include <ELLMatrix.hpp>
-
 #include <algorithm>
+#include <ft_comm.hpp>
 
 template<typename GlobalOrdinal>
 void sort_if_needed(GlobalOrdinal* list,
@@ -95,7 +95,7 @@ struct MatrixInitOp<miniFE::CSRMatrix<MINIFE_SCALAR,MINIFE_LOCAL_ORDINAL,MINIFE_
     matrix.packed_coefs.resize(nnz);
     dest_rowoffsets[n] = nnz;
 #ifdef HAVE_MPI 
-   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+	MPI_Comm_rank(miniFE::FTComm::get_instance()->get_world_comm(), &proc);
 #else
    proc = 0;
 #endif

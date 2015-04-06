@@ -130,8 +130,8 @@ driver(const Box& global_box, Box& my_box,
 
   int numprocs = 1, myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #endif
 
   if (params.load_imbalance > 0) {

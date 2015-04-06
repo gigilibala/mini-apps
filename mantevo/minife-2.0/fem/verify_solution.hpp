@@ -150,7 +150,7 @@ std::cout<<"("<<x<<","<<y<<","<<z<<") row "<<rows[i]<<": computed: "<<computed_s
   Scalar local_max_err = max_error.err;
   Scalar global_max_err = 0;
 #ifdef HAVE_MPI
-  MPI_Allreduce(&local_max_err, &global_max_err, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(&local_max_err, &global_max_err, 1, MPI_DOUBLE, MPI_MAX, FTComm::get_instance()->get_world_comm());
 #else
   global_max_err = local_max_err;
 #endif

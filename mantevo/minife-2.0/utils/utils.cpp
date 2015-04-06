@@ -94,7 +94,7 @@ void broadcast_parameters(Parameters& params)
   int iparams[num_int_params] = {params.nx, params.ny, params.nz, params.numthreads, params.mv_overlap_comm_comp, params.use_locking,
 		     params.elem_group_size, params.use_elem_mat_fields, params.verify_solution,
 		     params.device, params.num_devices,params.skip_device,params.numa};
-  MPI_Bcast(&iparams[0], num_int_params, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&iparams[0], num_int_params, MPI_INT, 0, FTComm::get_instance()->get_world_comm());
   params.nx = iparams[0];
   params.ny = iparams[1];
   params.nz = iparams[2];
@@ -110,7 +110,7 @@ void broadcast_parameters(Parameters& params)
   params.numa = iparams[12];
 
   float fparams[1] = {params.load_imbalance};
-  MPI_Bcast(&fparams[0], 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&fparams[0], 1, MPI_FLOAT, 0, FTComm::get_instance()->get_world_comm());
   params.load_imbalance = fparams[0];
 
 #endif
@@ -121,8 +121,11 @@ void initialize_mpi(int argc, char** argv, int& numprocs, int& myproc)
 {
 #ifdef HAVE_MPI
   MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+
+  miniFE::FTComm::init(0);
+
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #else
   numprocs = 1;
   myproc = 0;

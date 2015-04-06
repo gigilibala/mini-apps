@@ -91,7 +91,7 @@ cg_solve(OperatorType& A,
 
   int myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #ifdef USE_MPI_PCONTROL
   MPI_Pcontrol(1);
 #endif
@@ -162,6 +162,7 @@ cg_solve(OperatorType& A,
  		 A
 	   */
 	  /* checkpointing */
+
 	  if(3 == k){
 
 		  /* make checkpoint buffers or files ready */
@@ -210,7 +211,8 @@ cg_solve(OperatorType& A,
 	/* Here we should put the tryblock finish */
 
 	/* restarting from failure */
-#if 1 
+#if 0
+
 	if(3 == k){
 
 		/* make checkpoint buffers or files ready */

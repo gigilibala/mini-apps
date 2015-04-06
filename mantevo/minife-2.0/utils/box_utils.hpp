@@ -31,7 +31,7 @@
 #include <vector>
 #include <set>
 #include <map>
-
+#include <ft_comm.hpp>
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
@@ -245,13 +245,13 @@ void create_map_id_to_row(int global_nx, int global_ny, int global_nz,
   std::vector<int> all_boxes;
   int numprocs = 1, myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 
   GlobalOrdinal local_num_ids = num_my_ids;
   global_offsets.resize(numprocs);
   MPI_Datatype mpi_dtype = TypeTraits<GlobalOrdinal>::mpi_type();
-  MPI_Allgather(&local_num_ids, 1, mpi_dtype, &global_offsets[0], 1, mpi_dtype, MPI_COMM_WORLD);
+  MPI_Allgather(&local_num_ids, 1, mpi_dtype, &global_offsets[0], 1, mpi_dtype, FTComm::get_instance()->get_world_comm());
   GlobalOrdinal offset = 0;
   for(int i=0; i<numprocs; ++i) {
     GlobalOrdinal tmp = global_offsets[i];
@@ -263,7 +263,7 @@ void create_map_id_to_row(int global_nx, int global_ny, int global_nz,
 
   all_boxes.resize(6*numprocs);
   int* local_box_ranges = const_cast<int*>(&box.ranges[0]);
-  MPI_Allgather(local_box_ranges, 6, MPI_INT, &all_boxes[0], 6, MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(local_box_ranges, 6, MPI_INT, &all_boxes[0], 6, MPI_INT, FTComm::get_instance()->get_world_comm());
 #endif
 
   if (all_ids.size() > 0) {

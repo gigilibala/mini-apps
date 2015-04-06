@@ -54,7 +54,7 @@ exchange_externals(MatrixType& A,
 #endif
 
   int numprocs = 1;
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
 
   if (numprocs < 2) return;
 
@@ -96,7 +96,7 @@ exchange_externals(MatrixType& A,
   for(int i=0; i<num_neighbors; ++i) {
     int n_recv = recv_length[i];
     MPI_Irecv(x_external, n_recv, mpi_dtype, neighbors[i], MPI_MY_TAG,
-              MPI_COMM_WORLD, &request[i]);
+              FTComm::get_instance()->get_world_comm(), &request[i]);
     x_external += n_recv;
   }
 
@@ -132,7 +132,7 @@ exchange_externals(MatrixType& A,
   for(int i=0; i<num_neighbors; ++i) {
     int n_send = send_length[i];
     MPI_Send(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
-             MPI_COMM_WORLD);
+             FTComm::get_instance()->get_world_comm());
     s_buffer += n_send;
   }
 
@@ -148,7 +148,7 @@ exchange_externals(MatrixType& A,
   for(int i=0; i<num_neighbors; ++i) {
     if (MPI_Wait(&request[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
-      MPI_Abort(MPI_COMM_WORLD, -1);
+      MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);
     }
   }
 
@@ -173,8 +173,8 @@ begin_exchange_externals(MatrixType& A,
 #ifdef HAVE_MPI
 
   int numprocs = 1, myproc = 0;
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 
   if (numprocs < 2) return;
 
@@ -221,7 +221,7 @@ begin_exchange_externals(MatrixType& A,
   for(int i=0; i<num_neighbors; ++i) {
     int n_recv = recv_length[i];
     MPI_Irecv(x_external, n_recv, mpi_dtype, neighbors[i], MPI_MY_TAG,
-              MPI_COMM_WORLD, &exch_ext_requests[i]);
+              FTComm::get_instance()->get_world_comm(), &exch_ext_requests[i]);
     x_external += n_recv;
   }
 
@@ -242,10 +242,10 @@ begin_exchange_externals(MatrixType& A,
     int n_send = send_length[i];
 #ifdef USING_FAMPI
     MPI_Isend(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
-			  MPI_COMM_WORLD, &exch_ext_requests[num_neighbors+i]);
+			  FTComm::get_instance()->get_world_comm(), &exch_ext_requests[num_neighbors+i]);
 #else
     MPI_Send(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
-             MPI_COMM_WORLD);
+             FTComm::get_instance()->get_world_comm());
 #endif	// USING_FAMPI
     s_buffer += n_send;
   }
@@ -270,7 +270,7 @@ finish_exchange_externals(int num_neighbors)
   for(int i=0; i<num_neighbors; ++i) {
     if (MPI_Wait(&exch_ext_requests[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
-      MPI_Abort(MPI_COMM_WORLD, -1);
+      MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);
     }
   }
 #endif	// USING_FAMPI

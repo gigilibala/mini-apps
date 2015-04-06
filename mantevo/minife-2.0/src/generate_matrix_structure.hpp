@@ -51,7 +51,7 @@ generate_matrix_structure(const simple_mesh_description<typename MatrixType::Glo
 {
   int myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #endif
 
   int threw_exc = 0;
@@ -138,7 +138,7 @@ generate_matrix_structure(const simple_mesh_description<typename MatrixType::Glo
   }
 #ifdef HAVE_MPI
   int global_throw = 0;
-  MPI_Allreduce(&threw_exc, &global_throw, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&threw_exc, &global_throw, 1, MPI_INT, MPI_SUM, FTComm::get_instance()->get_world_comm());
   threw_exc = global_throw;
 #endif
   if (threw_exc) {

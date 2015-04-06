@@ -16,8 +16,9 @@ namespace miniFE{
 				MPI_Request dup_req;
 				MPI_Status  dup_stat;
 
-				MPI_Comm_idup(FTComm::get_instance()->get_world_comm(), &ftcomm->world, &dup_req);
+				MPI_Comm_idup(MPI_COMM_WORLD, &ftcomm->world, &dup_req);
 				MPI_Wait(&dup_req, &dup_stat);
+
 			}else{
 
 			}

@@ -59,7 +59,7 @@ time_kernels(OperatorType& A,
 
   int myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #endif
 
   if (!A.has_local_indices) {

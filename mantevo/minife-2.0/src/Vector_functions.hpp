@@ -52,8 +52,8 @@ void write_vector(const std::string& filename,
 {
   int numprocs = 1, myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #endif
 
   std::ostringstream osstr;
@@ -76,7 +76,7 @@ void write_vector(const std::string& filename,
       }
     }
 #ifdef HAVE_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(FTComm::get_instance()->get_world_comm());
 #endif
   }
 }
@@ -221,10 +221,10 @@ typename TypeTraits<typename Vector::ScalarType>::magnitude_type
 #ifdef USING_FAMPI
   MPI_Request allreq;
   MPI_Status allstat;
-  MPI_Iallreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, MPI_COMM_WORLD, &allreq);
+  MPI_Iallreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, FTComm::get_instance()->get_world_comm(), &allreq);
   MPI_Wait(&allreq, &allstat);
 #else
-  MPI_Allreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, FTComm::get_instance()->get_world_comm());
 #endif
   return global_dot;
 #else

@@ -91,7 +91,6 @@ int main(int argc, char** argv) {
   int numprocs = 1, myproc = 0;
   miniFE::initialize_mpi(argc, argv, numprocs, myproc);
 
-  miniFE::FTComm::init(0);
 #ifdef HAVE_MPI
 #ifdef USE_MPI_PCONTROL
   MPI_Pcontrol(0);
@@ -124,10 +123,10 @@ int main(int argc, char** argv) {
   /* at the first, doesn't need any fault-tolerant */
   MPI_Request req1;
   MPI_Status stat1;
-  MPI_Iallreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, MPI_COMM_WORLD, &req1);
+  MPI_Iallreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm(), &req1);
   MPI_Wait(&req1, &stat1);
 #else
-  MPI_Allreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm());
 #endif
 #endif
 
@@ -180,16 +179,16 @@ int main(int argc, char** argv) {
    MPI_Request req2[2];
    MPI_Status stat2[2];
    MPI_Ireduce(&rank_rss, &global_rss, 1,
-			   MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD, &req2[0]);
+			   MPI_LONG_LONG, MPI_SUM, 0, FTComm::get_instance()->get_world_comm(), &req2[0]);
    MPI_Ireduce(&rank_rss, &max_rss, 1,
-			   MPI_LONG_LONG, MPI_MAX, 0, MPI_COMM_WORLD, &req2[1]);
+			   MPI_LONG_LONG, MPI_MAX, 0, FTComm::get_instance()->get_world_comm(), &req2[1]);
    MPI_Waitall(2, req2, stat2);
 
 #else
    MPI_Reduce(&rank_rss, &global_rss, 1,
-       	MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+       	MPI_LONG_LONG, MPI_SUM, 0, FTComm::get_instance()->get_world_comm());
    MPI_Reduce(&rank_rss, &max_rss, 1,
-       	MPI_LONG_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
+       	MPI_LONG_LONG, MPI_MAX, 0, FTComm::get_instance()->get_world_comm());
 #endif
    if (myproc == 0) {
         doc.add("Global All-RSS (kB)", global_rss);

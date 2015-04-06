@@ -105,8 +105,8 @@ void write_matrix(const std::string& filename,
 
   int numprocs = 1, myproc = 0;
 #ifdef HAVE_MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
 #endif
 
   std::ostringstream osstr;
@@ -134,7 +134,7 @@ void write_matrix(const std::string& filename,
       }
     }
 #ifdef HAVE_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(FTComm::get_instance()->get_world_comm());
 #endif
   }
 }
@@ -310,7 +310,7 @@ parallel_memory_overhead_MB(const MatrixType& A)
   mem_MB += invMB*A.send_length.size()*sizeof(LocalOrdinal);
 
   double tmp = mem_MB;
-  MPI_Allreduce(&tmp, &mem_MB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&tmp, &mem_MB, 1, MPI_DOUBLE, MPI_SUM, FTComm::get_instance()->get_world_comm());
 #endif
 
   return mem_MB;
@@ -528,7 +528,7 @@ matvec_and_dot(MatrixType& A,
 #ifdef HAVE_MPI
   magnitude local_dot = result, global_dot = 0;
   MPI_Datatype mpi_dtype = TypeTraits<magnitude>::mpi_type();  
-  MPI_Allreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, FTComm::get_instance()->get_world_comm());
   return global_dot;
 #else
   return result;
