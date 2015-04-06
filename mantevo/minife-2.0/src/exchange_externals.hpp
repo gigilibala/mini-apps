@@ -33,6 +33,7 @@
 
 #ifdef HAVE_MPI
 #include <mpi.h>
+#include <mpi-ext.h>
 #endif
 
 #include <outstream.hpp>
@@ -161,7 +162,7 @@ exchange_externals(MatrixType& A,
 }
 
 #ifdef HAVE_MPI
-static std::vector<MPI_Request> exch_ext_requests;
+//static std::vector<MPI_Request> exch_ext_requests;
 #endif
 
 template<typename MatrixType,
@@ -190,7 +191,7 @@ begin_exchange_externals(MatrixType& A,
   const std::vector<LocalOrdinal>& send_length = A.send_length;
   const std::vector<int>& neighbors = A.neighbors;
   const std::vector<GlobalOrdinal>& elements_to_send = A.elements_to_send;
-
+  std::vector<MPI_Request>& exch_ext_requests = A.request;
 //  std::vector<Scalar> send_buffer(elements_to_send.size(), 0);
 //  std::vector<Scalar> send_buffer = A.send_buffer;
 
@@ -254,25 +255,28 @@ begin_exchange_externals(MatrixType& A,
 #endif
 }
 
-inline
-void
-finish_exchange_externals(int num_neighbors)
+template<typename MatrixType>
+int
+finish_exchange_externals(MatrixType& A)
 {
 #ifdef HAVE_MPI
   //
   // Complete the reads issued above
   //
 #if USING_FAMPI
-	MPI_Request* reqs = &exch_ext_requests[0];
-	MPI_Waitall(num_neighbors*2, reqs, MPI_STATUS_IGNORE);
+	MPI_Timeout timeout;
+    MPI_Timeout_set_seconds(&timeout, 1.0);
+	MPI_Request* reqs = &A.request[0];
+	return MPI_Waitall_local(A.request.size(), reqs, MPI_STATUS_IGNORE, timeout);
 #else
   MPI_Status status;
   for(int i=0; i<num_neighbors; ++i) {
-    if (MPI_Wait(&exch_ext_requests[i], &status) != MPI_SUCCESS) {
+    if (MPI_Wait(&A.request[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
       MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);
     }
   }
+  return 0;
 #endif	// USING_FAMPI
   
 

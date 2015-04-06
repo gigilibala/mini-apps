@@ -84,16 +84,18 @@ void get_parameters(int argc, char** argv, Parameters& params)
   params.num_devices = Mantevo::parse_parameter<int>(argstring, "num_devices", 2);
   params.skip_device = Mantevo::parse_parameter<int>(argstring, "skip_device", 9999);
   params.numa = Mantevo::parse_parameter<int>(argstring, "numa", 1);
+  params.spawned = Mantevo::parse_parameter<int>(argstring, "spawned", 0);
+  
 }
 
 //-------------------------------------------------------------
 void broadcast_parameters(Parameters& params)
 {
 #ifdef HAVE_MPI
-  const int num_int_params = 13;
+  const int num_int_params = 14;
   int iparams[num_int_params] = {params.nx, params.ny, params.nz, params.numthreads, params.mv_overlap_comm_comp, params.use_locking,
 		     params.elem_group_size, params.use_elem_mat_fields, params.verify_solution,
-		     params.device, params.num_devices,params.skip_device,params.numa};
+								 params.device, params.num_devices,params.skip_device,params.numa, params.spawned};
   MPI_Bcast(&iparams[0], num_int_params, MPI_INT, 0, FTComm::get_instance()->get_world_comm());
   params.nx = iparams[0];
   params.ny = iparams[1];
@@ -108,6 +110,7 @@ void broadcast_parameters(Parameters& params)
   params.num_devices = iparams[10];
   params.skip_device = iparams[11];
   params.numa = iparams[12];
+  params.spawned = iparams[13];
 
   float fparams[1] = {params.load_imbalance};
   MPI_Bcast(&fparams[0], 1, MPI_FLOAT, 0, FTComm::get_instance()->get_world_comm());
@@ -122,10 +125,9 @@ void initialize_mpi(int argc, char** argv, int& numprocs, int& myproc)
 #ifdef HAVE_MPI
   MPI_Init(&argc, &argv);
 
-  miniFE::FTComm::init(0);
-
-  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &numprocs);
-  MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
+  MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
+  
 #else
   numprocs = 1;
   myproc = 0;

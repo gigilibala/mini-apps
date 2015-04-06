@@ -210,11 +210,15 @@ int main(int argc, char *argv[])
 				MPI_Comm comm, spawned_comm, nwe;
 				fampi_repair_comm_shrink(world, &comm);
 				MPI_Comm_free(&world);
+
+				argv[1][0] = '1'; /* shows it is spawned */
 				
-				fampi_repair_comm_spawn(comm, size, argc, argv, &spawned_comm);
+				fampi_repair_comm_spawn(comm, 1, argc, argv, &spawned_comm);
 				MPI_Intercomm_merge(spawned_comm, 1, &world);
 				MPI_Comm_free(&spawned_comm);
-
+				
+				argv[1][0] = '0';
+				
 				int recv_iter;
 				MPI_Allreduce(&iter, &recv_iter, 1, MPI_INT, MPI_MAX,  world);
 //				assert(iter == recv_iter);

@@ -1,7 +1,7 @@
 #ifndef __ft_comm_hpp_
 #define __ft_comm_hpp_
 #include <mpi.h>
-
+#include <mpi-ext.h>
 
 namespace miniFE{
 
@@ -23,6 +23,8 @@ private:
 public:
 
 	static void init(bool spawned);
+
+	static void repair();
 
 	static FTComm* get_instance();
 	

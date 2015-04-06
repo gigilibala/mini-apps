@@ -617,9 +617,11 @@ template<typename MatrixType,
          typename VectorType>
 struct matvec_overlap {
 void operator()(MatrixType& A,
-                    VectorType& x,
-                    VectorType& y)
+				VectorType& x,
+				VectorType& y)
+
 {
+	
 #ifdef HAVE_MPI
   begin_exchange_externals(A, x);
 #endif
@@ -648,8 +650,12 @@ void operator()(MatrixType& A,
   }
 
 #ifdef HAVE_MPI
-  finish_exchange_externals(A.neighbors.size());
 
+  int rc = finish_exchange_externals(A);
+
+  if(MPI_SUCCESS != rc)
+	  return;
+  
   Arowoffsets = &A.row_offsets_external[0];
   beta = 1;
 
@@ -663,15 +669,14 @@ void operator()(MatrixType& A,
     ycoefs[row] = sum;
   }
 #endif
+
 }
 };
 
 template<typename MatrixType,
          typename VectorType>
-void matvec(MatrixType& A, VectorType& x, VectorType& y)
+matvec(MatrixType& A, VectorType& x, VectorType& y)
 {
-	// FA-MPI: we assume to call matvec_overlap in standard case instead of
-	// normal matvec to allow overlapping computation with communication
 //matvec_std<MatrixType,VectorType> mv;
   matvec_overlap<MatrixType,VectorType> mv;
   mv(A, x, y);

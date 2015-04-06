@@ -91,6 +91,12 @@ int main(int argc, char** argv) {
   int numprocs = 1, myproc = 0;
   miniFE::initialize_mpi(argc, argv, numprocs, myproc);
 
+  miniFE::FTComm::init(params.spawned);
+
+  MPI_Comm_size(miniFE::FTComm::get_instance()->get_world_comm(), &numprocs);
+  MPI_Comm_rank(miniFE::FTComm::get_instance()->get_world_comm(), &myproc);
+
+
 #ifdef HAVE_MPI
 #ifdef USE_MPI_PCONTROL
   MPI_Pcontrol(0);
@@ -103,9 +109,10 @@ int main(int argc, char** argv) {
   outstream(numprocs, myproc);
 #endif
 
-  //make sure each processor has the same parameters:
-  miniFE::broadcast_parameters(params);
-
+  if(!params.spawned) {
+	  //make sure each processor has the same parameters:
+	  miniFE::broadcast_parameters(params);
+  }
 
   Box global_box = { 0, params.nx, 0, params.ny, 0, params.nz };
   std::vector<Box> local_boxes(numprocs);
@@ -117,34 +124,36 @@ int main(int argc, char** argv) {
   MINIFE_GLOBAL_ORDINAL num_my_ids = miniFE::get_num_ids<MINIFE_GLOBAL_ORDINAL>(my_box);
   MINIFE_GLOBAL_ORDINAL min_ids = num_my_ids;
 
+  if(!params.spawned) {
 #ifdef HAVE_MPI
-  MPI_Datatype mpi_dtype = miniFE::TypeTraits<MINIFE_GLOBAL_ORDINAL>::mpi_type();
+	  MPI_Datatype mpi_dtype = miniFE::TypeTraits<MINIFE_GLOBAL_ORDINAL>::mpi_type();
 #ifdef USING_FAMPI
-  /* at the first, doesn't need any fault-tolerant */
-  MPI_Request req1;
-  MPI_Status stat1;
-  MPI_Iallreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm(), &req1);
-  MPI_Wait(&req1, &stat1);
+	  /* at the first, doesn't need any fault-tolerant */
+	  MPI_Request req1;
+	  MPI_Status stat1;
+	  MPI_Iallreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm(), &req1);
+	  MPI_Wait(&req1, &stat1);
 #else
-  MPI_Allreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm());
+	  MPI_Allreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm());
 #endif
 #endif
-
-  if (min_ids == 0) {
-    std::cout<<"One or more processors have 0 equations. Not currently supported. Exiting."<<std::endl;
-
-    miniFE::finalize_mpi();
-
-    return 1;
   }
+	  if (min_ids == 0) {
+		  std::cout<<"One or more processors have 0 equations. Not currently supported. Exiting."<<std::endl;
 
-  std::ostringstream osstr;
-  osstr << "miniFE." << params.nx << "x" << params.ny << "x" << params.nz;
+		  miniFE::finalize_mpi();
+
+		  return 1;
+	  }
+
+	  std::ostringstream osstr;
+	  osstr << "miniFE." << params.nx << "x" << params.ny << "x" << params.nz;
 #ifdef HAVE_MPI
-  osstr << ".P"<<numprocs;
+	  osstr << ".P"<<numprocs;
 #endif
-  osstr << ".";
-  if (params.name != "") osstr << params.name << ".";
+	  osstr << ".";
+	  if (params.name != "") osstr << params.name << ".";
+
 
   YAML_Doc doc("miniFE", MINIFE_VERSION, ".", osstr.str());
   if (myproc == 0) {
@@ -153,13 +162,13 @@ int main(int argc, char** argv) {
     add_timestring_to_yaml(doc);
   }
 
+
   //Most of the program is performed in the 'driver' function, which is
   //templated on < Scalar, LocalOrdinal, GlobalOrdinal >.
   //To run miniFE with float instead of double, or 'long long' instead of int,
   //etc., change these template-parameters by changing the macro definitions in
   //the makefile or on the make command-line.
 
-  
   int return_code =
      miniFE::driver< MINIFE_SCALAR, MINIFE_LOCAL_ORDINAL, MINIFE_GLOBAL_ORDINAL>(global_box, my_box, params, doc);
 

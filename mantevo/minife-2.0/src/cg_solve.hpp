@@ -150,7 +150,7 @@ cg_solve(OperatorType& A,
 #endif
 
   Checkpointer cper;
-  
+  int fault_num = 0;
   for(LocalOrdinalType k=1; k <= max_iter && normr > tolerance; ++k) {
   restart:
 	  /* things do we need to save here:
@@ -162,9 +162,9 @@ cg_solve(OperatorType& A,
  		 A
 	   */
 	  /* checkpointing */
-
-	  if(3 == k){
-
+	  
+	  
+	  if(0 == k % cper.checkpoint_rate){
 		  /* make checkpoint buffers or files ready */
 		  cper.make_checkpoint_ready();
 		  /* write the checkpoint */
@@ -207,26 +207,80 @@ cg_solve(OperatorType& A,
 	/* the place that magic exchage externals happen */
 	/* Here put the tryblock start. does not need to go before this. Do the data
 	 * exchange and checkpointing here too. */
+
+#ifndef USING_FAMPI
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
-	/* Here we should put the tryblock finish */
+#else
+	MPI_Timeout reqs_timeout, tb_timeout;
+	MPI_Timeout_set_seconds(&reqs_timeout, 0.0001);
+	MPI_Timeout_set_seconds(&tb_timeout, 1.0);	
+	
+	MPI_Request tb_req;
+	int done, rc, num_tb_retries = 3;
+	MPI_Comm world = FTComm::get_instance()->get_world_comm();
+	MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req);
 
-	/* restarting from failure */
-#if 0
+	if(myproc == 2 && k == 10 && fault_num == 0){
+		*(int*)0 = 0;
+	}
+	
+    TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 
-	if(3 == k){
+  retry_tryblocK:
+	MPI_Tryblock_finish_local(tb_req, A.request.size(), &A.request[0], reqs_timeout);
 
-		/* make checkpoint buffers or files ready */
-		cper.make_restart_ready();
-		/* read the checkpoint */
-		cper.r_value(k);
-		cper.r_value(rtrans);
-		cper.r_value(oldrtrans);
-		p.restart(cper);
-		r.restart(cper);
-		A.restart(cper);
-		/* do the actual restarting */
-		cper.restart();
+	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, tb_timeout);
+	if(MPI_SUCCESS == rc){
+		if(MPI_ERR_TIMEOUT == rc){
+			if(num_tb_retries-- > 0)
+				goto retry_tryblocK;
+			else
+				MPI_Abort(world, 0);
+		}
+		
+		if(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc){
+
+			int error_codes = MPI_ERR_PROC_FAILED;
+			MPI_Comm comms[1];
+			int comm_count;
+			MPI_Get_failed_communicators(tb_req, 1, &error_codes, 1, comms, &comm_count);
+
+			if(comm_count > 0){
+				fault_num = 1;
+
+/*
+				if(rank == 0)
+					cout << rank << " tryblock failed with " << comm_count <<
+						" communicators failed, about to shrink" << endl;
+*/
+				assert(comms[0] == FTComm::get_instance()->get_world_comm());
+				FTComm::repair();
+			}
+#if 1
+			/* restarting from failure */
+			if(3 == k){
+				/* make checkpoint buffers or files ready */
+				cper.make_restart_ready();
+				/* read the checkpoint */
+				cper.r_value(k);
+				cper.r_value(rtrans);
+				cper.r_value(oldrtrans);
+				p.restart(cper);
+				r.restart(cper);
+				A.restart(cper);
+				/* do the actual restarting */
+				cper.restart();
 //		goto restart;
+			}
+#endif
+
+		}
+
+		/* TODO: free the request in exchange externals */
+		MPI_Request_free(&tb_req);
+		for(int i = 0; i < A.request.size(); i++){
+			MPI_Request_free(&A.request[i]);
+		}
 	}
 #endif
 	

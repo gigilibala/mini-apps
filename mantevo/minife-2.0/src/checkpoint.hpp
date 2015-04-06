@@ -14,16 +14,17 @@ struct Checkpointer{
 
 	
 private:
-	int remote_checkpoint_idx = 0;
-	char* remote_checkpoint_buf[2];
-	char* my_checkpoint_buf;
-	int   my_checkpoint_size;
+//	int remote_checkpoint_idx = 0;
+//	char* remote_checkpoint_buf[2];
+//	char* my_checkpoint_buf;
+//	int   my_checkpoint_size;
 	int remote_rank;
 
 	std::ostream* ofs;
 	std::istream* ifs;
 	
 public:	
+	int checkpoint_rate;
 	void make_checkpoint_ready(){
 
 		std::cout << "getting ready to checkpoint" << std::endl;
@@ -61,7 +62,7 @@ public:
 //		if(NULL == my_checkpoint_buf){
 //			MPI_Abort(FTComm::get_instance()->get_world_comm(), 0);
 //		}
-
+		checkpoint_rate = 20;
 		
 	}
 	~Checkpointer(){/* do nothing */}

@@ -24,7 +24,7 @@ static inline char* get_error_string(int rc){
  * spawns new processes and returnes the newly created communicator
  */
 
-int fampi_repair_comm_spawn(MPI_Comm new_comm, int vsize, int argc, char** argv, MPI_Comm* comm){
+int fampi_repair_comm_spawn(MPI_Comm new_comm, int num_new_procs, int argc, char** argv, MPI_Comm* comm){
 	int exit_code = 0, rc;
 	MPI_Comm intercomm;
 	int error_codes;
@@ -34,9 +34,9 @@ int fampi_repair_comm_spawn(MPI_Comm new_comm, int vsize, int argc, char** argv,
 	if(0 == rank)
 		std::cout << "about to spawn " << std::endl;
 	
-	argv[1][0] = '1'; 			/* shows it is spawned */
 	
-	rc = MPI_Comm_spawn(argv[0], &argv[1], 1, MPI_INFO_NULL, 0, new_comm, &intercomm, &error_codes);
+	rc = MPI_Comm_spawn(argv[0], &argv[1], num_new_procs, MPI_INFO_NULL,
+						0, new_comm, &intercomm, &error_codes);
 
 	if(MPI_SUCCESS != rc){
 		char error_str[200];
@@ -44,16 +44,17 @@ int fampi_repair_comm_spawn(MPI_Comm new_comm, int vsize, int argc, char** argv,
 		MPI_Error_string(rc, error_str, &size);
 		std::cout << "spawn failed in rank " << rank << " "
 				  << "with error " << error_str << std::endl;
+		exit_code = rc;
 	}
 	/* spawn section */
 	*comm = intercomm;
-	return 0;
+	return exit_code;
 }
  
 /* shrinking a communicator by removing failed communicators  */
 int fampi_repair_comm_shrink(MPI_Comm fcomm, MPI_Comm* comm){
 
-	int             rc;
+	int             rc, exit_code;
 	MPI_Request     shrink_req, tb_req;
 	MPI_Status      shrink_stat, tb_stat;
 	MPI_Comm        newcomm;
@@ -117,5 +118,6 @@ retry_tb:
 	*comm = newcomm;
 	MPI_Request_free(&tb_req);
 	MPI_Request_free(&shrink_req);
-	return 0;
+	
+	return exit_code;
 }

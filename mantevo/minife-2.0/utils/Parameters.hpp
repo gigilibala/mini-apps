@@ -56,6 +56,7 @@ struct Parameters {
   int num_devices;
   int skip_device;
   int numa;
+  int spawned;
 };//struct Parameters
 
 }//namespace miniFE
