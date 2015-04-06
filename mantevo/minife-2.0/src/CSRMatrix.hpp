@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <checkpoint.hpp>
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
@@ -44,7 +45,7 @@ template<typename Scalar,
          typename LocalOrdinal,
          typename GlobalOrdinal>
 struct
-CSRMatrix {
+CSRMatrix : ICheckpoint{
   CSRMatrix()
    : has_local_indices(false),
      rows(), row_offsets(), row_offsets_external(),
@@ -108,6 +109,120 @@ CSRMatrix {
 		size += sizeof(int)*           11;
 		return size;
 	}
+	
+
+
+	void print_sizes(){
+		std::cout << "has_local_indices: " << has_local_indices << std::endl;
+		std::cout << "rows: " << rows.size() << std::endl;
+		std::cout << "row_offsets: " << row_offsets.size() << std::endl;
+		std::cout << "row_offsets_external: " << row_offsets_external.size() << std::endl;
+		std::cout << "packed_cols: " << packed_cols.size() << std::endl;
+		std::cout << "packed_coefs: " << packed_coefs.size() << std::endl;
+		std::cout << "num_cols: " << num_cols << std::endl;
+#ifdef HAVE_MPI
+		std::cout << "external_index: " << external_index.size() << std::endl;
+		std::cout << "external_local_index: " << external_local_index.size() << std::endl;
+		std::cout << "elements_to_send: " << elements_to_send.size() << std::endl;
+		std::cout << "neighbors: " << neighbors.size() << std::endl;
+		std::cout << "recv_length: " << recv_length.size() << std::endl;
+		std::cout << "send_length: " << send_length.size() << std::endl;
+		std::cout << "send_buffer: " << send_buffer.size() << std::endl;
+		std::cout << "request: " << request.size() << std::endl;
+#endif
+	}
+
+	int checkpoint(Checkpointer& cper){
+		
+		cper.cp_value<bool>(has_local_indices);
+		cper.cp_value<int>(num_cols);
+
+		cper.cp_vector<int>(rows);
+		cper.cp_vector<int>(row_offsets);
+		cper.cp_vector<int>(row_offsets_external);
+		cper.cp_vector<int>(packed_cols);
+		cper.cp_vector<Scalar>(packed_coefs);
+#ifdef HAVE_MPI
+		cper.cp_vector<int>(external_index);
+		cper.cp_vector<int>(external_local_index);
+		cper.cp_vector<int>(elements_to_send);
+		cper.cp_vector<int>(neighbors);
+		cper.cp_vector<int>(recv_length);
+		cper.cp_vector<int>(send_length);
+#endif
+		return 0;
+	}
+
+	int restart(Checkpointer& cper){
+
+		cper.r_value<bool>(has_local_indices);
+		cper.r_value<int>(num_cols);
+
+		cper.r_vector<int>(rows);
+		cper.r_vector<int>(row_offsets);
+		cper.r_vector<int>(row_offsets_external);
+		cper.r_vector<int>(packed_cols);
+		cper.r_vector<Scalar>(packed_coefs);
+#ifdef HAVE_MPI
+		cper.r_vector<int>(external_index);
+		cper.r_vector<int>(external_local_index);
+		cper.r_vector<int>(elements_to_send);
+		cper.r_vector<int>(neighbors);
+		cper.r_vector<int>(recv_length);
+		cper.r_vector<int>(send_length);
+
+#endif
+		return 0;
+	}
+
+	
+  size_t num_nonzeros() const
+  {
+    return row_offsets[row_offsets.size()-1];
+  }
+
+  void reserve_space(unsigned nrows, unsigned ncols_per_row)
+  {
+    rows.resize(nrows);
+    row_offsets.resize(nrows+1);
+    packed_cols.reserve(nrows * ncols_per_row);
+    packed_coefs.reserve(nrows * ncols_per_row);
+  }
+
+  void get_row_pointers(GlobalOrdinalType row, size_t& row_length,
+                        GlobalOrdinalType*& cols,
+                        ScalarType*& coefs)
+  {
+    ptrdiff_t local_row = -1;
+    //first see if we can get the local-row index using fast direct lookup:
+    if (rows.size() >= 1) {
+      ptrdiff_t idx = row - rows[0];
+      if (idx < rows.size() && rows[idx] == row) {
+        local_row = idx;
+      }
+    }
+ 
+    //if we didn't get the local-row index using direct lookup, try a
+    //more expensive binary-search:
+    if (local_row == -1) {
+      typename std::vector<GlobalOrdinal>::iterator row_iter =
+          std::lower_bound(rows.begin(), rows.end(), row);
+  
+      //if we still haven't found row, it's not local so jump out:
+      if (row_iter == rows.end() || *row_iter != row) {
+        row_length = 0;
+        return;
+      }
+  
+      local_row = row_iter - rows.begin();
+    }
+
+    LocalOrdinalType offset = row_offsets[local_row];
+    row_length = row_offsets[local_row+1] - offset;
+    cols = &packed_cols[offset];
+    coefs = &packed_coefs[offset];
+  }
+/*
 	
 	int checkpoint_write(char* buffer, int buf_size){
 		char* buf = buffer;
@@ -231,76 +346,8 @@ CSRMatrix {
 		assert(buf-buffer == checkpoint_size());
 		return buf-buffer;
 	}
+*/
 
-
-	
-	
-	void print_sizes(){
-		std::cout << "has_local_indices: " << has_local_indices << std::endl;
-		std::cout << "rows: " << rows.size() << std::endl;
-		std::cout << "row_offsets: " << row_offsets.size() << std::endl;
-		std::cout << "row_offsets_external: " << row_offsets_external.size() << std::endl;
-		std::cout << "packed_cols: " << packed_cols.size() << std::endl;
-		std::cout << "packed_coefs: " << packed_coefs.size() << std::endl;
-		std::cout << "num_cols: " << num_cols << std::endl;
-#ifdef HAVE_MPI
-		std::cout << "external_index: " << external_index.size() << std::endl;
-		std::cout << "external_local_index: " << external_local_index.size() << std::endl;
-		std::cout << "elements_to_send: " << elements_to_send.size() << std::endl;
-		std::cout << "neighbors: " << neighbors.size() << std::endl;
-		std::cout << "recv_length: " << recv_length.size() << std::endl;
-		std::cout << "send_length: " << send_length.size() << std::endl;
-		std::cout << "send_buffer: " << send_buffer.size() << std::endl;
-		std::cout << "request: " << request.size() << std::endl;
-#endif
-	}
-	
-  size_t num_nonzeros() const
-  {
-    return row_offsets[row_offsets.size()-1];
-  }
-
-  void reserve_space(unsigned nrows, unsigned ncols_per_row)
-  {
-    rows.resize(nrows);
-    row_offsets.resize(nrows+1);
-    packed_cols.reserve(nrows * ncols_per_row);
-    packed_coefs.reserve(nrows * ncols_per_row);
-  }
-
-  void get_row_pointers(GlobalOrdinalType row, size_t& row_length,
-                        GlobalOrdinalType*& cols,
-                        ScalarType*& coefs)
-  {
-    ptrdiff_t local_row = -1;
-    //first see if we can get the local-row index using fast direct lookup:
-    if (rows.size() >= 1) {
-      ptrdiff_t idx = row - rows[0];
-      if (idx < rows.size() && rows[idx] == row) {
-        local_row = idx;
-      }
-    }
- 
-    //if we didn't get the local-row index using direct lookup, try a
-    //more expensive binary-search:
-    if (local_row == -1) {
-      typename std::vector<GlobalOrdinal>::iterator row_iter =
-          std::lower_bound(rows.begin(), rows.end(), row);
-  
-      //if we still haven't found row, it's not local so jump out:
-      if (row_iter == rows.end() || *row_iter != row) {
-        row_length = 0;
-        return;
-      }
-  
-      local_row = row_iter - rows.begin();
-    }
-
-    LocalOrdinalType offset = row_offsets[local_row];
-    row_length = row_offsets[local_row+1] - offset;
-    cols = &packed_cols[offset];
-    coefs = &packed_coefs[offset];
-  }
 };
 
 }//namespace miniFE

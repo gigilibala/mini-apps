@@ -87,7 +87,10 @@ int main(int argc, char *argv[])
 		MPI_Comm_rank(world, &rank);
 		MPI_Comm_size(world, &size);
 
+		char hostname[100];
+		gethostname(hostname, 100);
 		std::cout << "iter allreduced in child  " << iter << " "
+				  << "in host: " << hostname << " "
 				  << size << " " << rank << std::endl;
 
 	}
@@ -159,10 +162,10 @@ int main(int argc, char *argv[])
 #endif
 		int req_i = 0;
 
-//		if(rank == 4 && iter == 3)
-//			*(int*)0 = 0;
+		if(rank == 9 && (iter == 1 || iter == 3))
+			*(int*)0 = 0;
 		
-		if(rank >= size)
+		if(rank >= size) 
 			goto skip;
 		/* exchange externals */
 		/* recv from top */
@@ -199,8 +202,9 @@ int main(int argc, char *argv[])
 			MPI_Get_failed_communicators(tb_req1, 1, &error_codes, 1, comms, &comm_count);
 
 			if(comm_count > 0){
-				cout << rank << " tryblock failed with " << comm_count <<
-					" communicators failed, about to shrink" << endl;
+				if(rank == 0)
+					cout << rank << " tryblock failed with " << comm_count <<
+						" communicators failed, about to shrink" << endl;
 				assert(comms[0] == world);
 				
 				MPI_Comm comm, spawned_comm, nwe;
@@ -209,18 +213,19 @@ int main(int argc, char *argv[])
 				
 				fampi_repair_comm_spawn(comm, size, argc, argv, &spawned_comm);
 				MPI_Intercomm_merge(spawned_comm, 1, &world);
-//				MPI_Comm_free(&spawned_comm);
+				MPI_Comm_free(&spawned_comm);
 
 				int recv_iter;
 				MPI_Allreduce(&iter, &recv_iter, 1, MPI_INT, MPI_MAX,  world);
 //				assert(iter == recv_iter);
-				std::cout << "iter allreduced in parent " << iter << " "
-						  << size << " " << rank << std::endl;
 
 				MPI_Comm_rank(world, &rank);
 				MPI_Comm_size(world, &size);
 				top_neigh = (rank-1+size)%size;
 				bot_neigh = (rank+1)%size;
+				if(rank == 0)
+					std::cout << "iter allreduced in parent " << iter << " "
+							  << size << " " << rank << std::endl;
 
 			}
 		}
@@ -238,12 +243,16 @@ int main(int argc, char *argv[])
 #endif
 	}
 	TOCK(time1);
-	if(0 == rank)
-		cout << "total time is " << time1 << endl;
+	MPI_Barrier(world);
+//	if(0 == rank)
+	cout << "total time is " << time1 << " in rank " << rank<< endl;
+	
 cleanup:
 
 	if(matrix)
 		free(matrix);
+	sleep(2);					/* sleep for 2 seconds and then abort */
+	MPI_Abort(world, 0);
 	MPI_Finalize();
 	return 0;
 }

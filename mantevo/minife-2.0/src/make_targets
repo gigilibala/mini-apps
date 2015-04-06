@@ -2,7 +2,8 @@
 OBJS = \
 	BoxPartition.o \
 	YAML_Doc.o \
-	YAML_Element.o
+	YAML_Element.o \
+	ft_comm.o
 
 UTIL_OBJS = \
 	param_utils.o \

@@ -149,7 +149,10 @@ cg_solve(OperatorType& A,
   os << "brkdown_tol = " << brkdown_tol << std::endl;
 #endif
 
+  Checkpointer cper;
+  
   for(LocalOrdinalType k=1; k <= max_iter && normr > tolerance; ++k) {
+  restart:
 	  /* things do we need to save here:
 		 k
 		 rtrans
@@ -158,20 +161,23 @@ cg_solve(OperatorType& A,
 		 r
  		 A
 	   */
+	  /* checkpointing */
+	  if(3 == k){
 
-  if(0 == myproc && k == 1){
-	  A.print_sizes();
+		  /* make checkpoint buffers or files ready */
+		  cper.make_checkpoint_ready();
+		  /* write the checkpoint */
+		  cper.cp_value(k);
+		  cper.cp_value(rtrans);
+		  cper.cp_value(oldrtrans);
+		  p.checkpoint(cper);
+		  r.checkpoint(cper);
+		  A.checkpoint(cper);
+		  /* do the actual checkpointing */
+		  cper.checkpoint();
+	  }
 
-	  int csize = checkpoint_write(k, rtrans, oldrtrans, p, r, A, NULL, 0);
-	  char buf[csize];
-	  checkpoint_write(k, rtrans, oldrtrans, p, r, A, buf, csize);
-	  checkpoint_read(k, rtrans, oldrtrans, p, r, A, buf, csize);
-	  A.print_sizes();
-  }
 
-  int buf_size;
-  int size = checkpoint_write(k, rtrans, oldrtrans, p, r, A, NULL, 0);
-	  
     if (k == 1) {
       TICK(); waxpby(one, r, zero, r, p); TOCK(tWAXPY);
     }
@@ -202,6 +208,26 @@ cg_solve(OperatorType& A,
 	 * exchange and checkpointing here too. */
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 	/* Here we should put the tryblock finish */
+
+	/* restarting from failure */
+#if 1 
+	if(3 == k){
+
+		/* make checkpoint buffers or files ready */
+		cper.make_restart_ready();
+		/* read the checkpoint */
+		cper.r_value(k);
+		cper.r_value(rtrans);
+		cper.r_value(oldrtrans);
+		p.restart(cper);
+		r.restart(cper);
+		A.restart(cper);
+		/* do the actual restarting */
+		cper.restart();
+//		goto restart;
+	}
+#endif
+	
     TICK(); p_ap_dot = dot(Ap, p); TOCK(tDOT);
 #endif
 

@@ -9,7 +9,7 @@ SOURCES  = $(shell find . -name '*.cpp' -print)
 
 OBJS     = $(patsubst %.cpp,%.o,$(SOURCES))
 
-CFLAGS   = -O2 -g -fPIC
+CFLAGS   = -O0 -ggdb -fPIC
 # -Wall -Werror
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. 

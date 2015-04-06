@@ -31,7 +31,9 @@ int fampi_repair_comm_spawn(MPI_Comm new_comm, int vsize, int argc, char** argv,
 	int rank, size;
 	MPI_Comm_rank(new_comm, &rank);
 	
-	std::cout << "about to spawn " << std::endl;
+	if(0 == rank)
+		std::cout << "about to spawn " << std::endl;
+	
 	argv[1][0] = '1'; 			/* shows it is spawned */
 	
 	rc = MPI_Comm_spawn(argv[0], &argv[1], 1, MPI_INFO_NULL, 0, new_comm, &intercomm, &error_codes);
@@ -57,7 +59,7 @@ int fampi_repair_comm_shrink(MPI_Comm fcomm, MPI_Comm* comm){
 	MPI_Comm        newcomm;
 	MPI_Timeout     shrink_timeout, tb_timeout;
 	int             max_retries = 3;
-
+	int             shrink_wait_max = 20;
 	int             rank, size;
 
 	MPI_Comm_rank(fcomm, &rank);
@@ -66,13 +68,20 @@ int fampi_repair_comm_shrink(MPI_Comm fcomm, MPI_Comm* comm){
 
 	/* shrink section */
 	MPI_Timeout_set_seconds(&tb_timeout, 1.0);
-	MPI_Timeout_set_seconds(&shrink_timeout, 1.0);
+	MPI_Timeout_set_seconds(&shrink_timeout, 2.0);
 
 retry:
 	
 	MPI_Tryblock_start(fcomm, MPI_TRYBLOCK_GLOBAL, &tb_req);
 
 	MPI_Comm_ishrink(fcomm, &newcomm, &shrink_req);
+
+wait_shrink:
+	rc = MPI_Wait_local(&shrink_req, &shrink_stat, shrink_timeout);
+	if(MPI_ERR_TIMEOUT == rc && shrink_wait_max-- > 0){
+		goto wait_shrink;
+	}
+	shrink_wait_max = 20;
 	
 retry_tb:
 	assert(MPI_SUCCESS ==
@@ -96,6 +105,7 @@ retry_tb:
 		if(--max_retries > 0){
 			cout << "going to retry" << endl;
 			MPI_Request_free(&tb_req);
+			MPI_Request_free(&shrink_req);
 			MPI_Comm_free(&newcomm);
 			goto retry;
 		}else{

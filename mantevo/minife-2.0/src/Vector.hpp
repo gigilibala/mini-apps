@@ -31,6 +31,7 @@
 #include <vector>
 #include <string.h>
 #include <assert.h>
+#include <checkpoint.hpp>
 
 namespace miniFE {
 
@@ -38,7 +39,7 @@ namespace miniFE {
 template<typename Scalar,
          typename LocalOrdinal,
          typename GlobalOrdinal>
-struct Vector {
+struct Vector : ICheckpoint{
   typedef Scalar ScalarType;
   typedef LocalOrdinal LocalOrdinalType;
   typedef GlobalOrdinal GlobalOrdinalType;
@@ -61,6 +62,26 @@ struct Vector {
   LocalOrdinal local_size;
   std::vector<Scalar> coefs;
 
+	int checkpoint(Checkpointer& cper){
+
+		cper.cp_value<int>(startIndex);
+		cper.cp_value<int>(local_size);
+		
+		cper.cp_vector<Scalar>(coefs);
+
+		return 0;
+	}
+
+	int restart(Checkpointer& cper){
+
+		cper.r_value<int>(startIndex);
+		cper.r_value<int>(local_size);
+		
+		cper.r_vector<Scalar>(coefs);
+		return 0;
+	}
+
+/*
 	int checkpoint_write(char* buffer, int buf_size){
 		char* buf = buffer;
 		int size = 0;
@@ -102,6 +123,8 @@ struct Vector {
 		assert(buf-buffer == size);
 		return size;
 	}
+
+ */
 };
 
 }//namespace miniFE

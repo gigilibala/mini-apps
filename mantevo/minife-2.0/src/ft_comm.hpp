@@ -1,44 +1,34 @@
 #ifndef __ft_comm_hpp_
 #define __ft_comm_hpp_
+#include <mpi.h>
+
 
 namespace miniFE{
 
 class FTComm{
 
 private:
-	static MPI_Comm world;
-	
-public:
+	static FTComm* ftcomm;
+	MPI_Comm world;
+
 	/* call this right after the MPI_Init */
-	FTComm(bool spawned){
+	FTComm(){
 
-		if(!spawned){
-			MPI_Request dup_req;
-			MPI_Status  dup_stat;
-
-			MPI_Comm_idup(MPI_COMM_WORLD, &world, &dup_req);
-			MPI_Wait(&dup_req, &dup_stat);
-
-		}else{
-			
-		}
 	}
 
 	~FTComm(){
 
 	}
 
-	static MPI_Comm get_world_comm(){
-		return world;
-	}
+public:
 
-	static MPI_Comm shrink_and_spawn(MPI_Comm& failed_comm){
+	static void init(bool spawned);
 
+	static FTComm* get_instance();
+	
+	MPI_Comm get_world_comm();
 
-		/* at the end */
-		return world;
-	}
-		
+	MPI_Comm shrink_and_spawn(MPI_Comm failed_comm);
 };
 	
 }

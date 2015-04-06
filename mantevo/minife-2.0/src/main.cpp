@@ -51,6 +51,7 @@
 #include <utils.hpp>
 #include <driver.hpp>
 #include <YAML_Doc.hpp>
+#include <ft_comm.hpp>
 
 #if MINIFE_INFO != 0
 #include <miniFE_info.hpp>
@@ -90,6 +91,7 @@ int main(int argc, char** argv) {
   int numprocs = 1, myproc = 0;
   miniFE::initialize_mpi(argc, argv, numprocs, myproc);
 
+  miniFE::FTComm::init(0);
 #ifdef HAVE_MPI
 #ifdef USE_MPI_PCONTROL
   MPI_Pcontrol(0);
