@@ -41,7 +41,7 @@ test:all
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 install: all
-	cp miniFE.x ../../../bin/
+	cp miniFE.x $(USRPATH)/bin
 
 clean:
 	rm -f *.o *.a *.x *.linkinfo miniFE_info.hpp

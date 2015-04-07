@@ -28,6 +28,9 @@ LIBS=$(FTLIB)
 CXX=mpicxx
 CC=mpicc
 
+USRPATH := $(shell echo $(USRPATH))
+
+
 #CXX=g++
 #CC=gcc
 
