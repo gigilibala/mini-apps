@@ -15,8 +15,11 @@ private:
 	int myargc;
 	char** myargv;
 
+	bool spawned;
+	bool restarted;
+
 	/* call this right after the MPI_Init */
-	FTComm(){}
+	FTComm(){spawned = false;}
 
 	~FTComm(){}
 
@@ -31,6 +34,13 @@ public:
 	MPI_Comm get_world_comm();
 
 	MPI_Comm shrink_and_spawn(MPI_Comm failed_comm);
+
+	bool is_spawned();
+
+	bool is_restarted();
+
+	void set_restarted();
+
 };
 	
 }

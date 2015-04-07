@@ -93,6 +93,8 @@ int main(int argc, char** argv) {
 
   miniFE::FTComm::get_instance()->init(params.spawned, argc, argv);
 
+restart:
+  
   MPI_Comm_size(miniFE::FTComm::get_instance()->get_world_comm(), &numprocs);
   MPI_Comm_rank(miniFE::FTComm::get_instance()->get_world_comm(), &myproc);
 
@@ -109,10 +111,8 @@ int main(int argc, char** argv) {
   outstream(numprocs, myproc);
 #endif
 
-  if(!params.spawned) {
-	  //make sure each processor has the same parameters:
-	  miniFE::broadcast_parameters(params);
-  }
+  //make sure each processor has the same parameters:
+  miniFE::broadcast_parameters(params);
 
   Box global_box = { 0, params.nx, 0, params.ny, 0, params.nz };
   std::vector<Box> local_boxes(numprocs);
@@ -124,7 +124,6 @@ int main(int argc, char** argv) {
   MINIFE_GLOBAL_ORDINAL num_my_ids = miniFE::get_num_ids<MINIFE_GLOBAL_ORDINAL>(my_box);
   MINIFE_GLOBAL_ORDINAL min_ids = num_my_ids;
 
-  if(!params.spawned) {
 #ifdef HAVE_MPI
 	  MPI_Datatype mpi_dtype = miniFE::TypeTraits<MINIFE_GLOBAL_ORDINAL>::mpi_type();
 #ifdef USING_FAMPI
@@ -137,7 +136,7 @@ int main(int argc, char** argv) {
 	  MPI_Allreduce(&num_my_ids, &min_ids, 1, mpi_dtype, MPI_MIN, miniFE::FTComm::get_instance()->get_world_comm());
 #endif
 #endif
-  }
+
 	  if (min_ids == 0) {
 		  std::cout<<"One or more processors have 0 equations. Not currently supported. Exiting."<<std::endl;
 
@@ -171,6 +170,9 @@ int main(int argc, char** argv) {
 
   int return_code =
      miniFE::driver< MINIFE_SCALAR, MINIFE_LOCAL_ORDINAL, MINIFE_GLOBAL_ORDINAL>(global_box, my_box, params, doc);
+  if(return_code != 0){
+	  goto restart;
+  }
 
   miniFE::timer_type total_time = miniFE::mytimer() - start_time;
 

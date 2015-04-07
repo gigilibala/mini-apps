@@ -270,7 +270,7 @@ finish_exchange_externals(MatrixType& A)
 	return MPI_Waitall_local(A.request.size(), reqs, MPI_STATUS_IGNORE, timeout);
 #else
   MPI_Status status;
-  for(int i=0; i<num_neighbors; ++i) {
+  for(int i=0; i<A.request.size(); ++i) {
     if (MPI_Wait(&A.request[i], &status) != MPI_SUCCESS) {
       std::cerr << "MPI_Wait error\n"<<std::endl;
       MPI_Abort(FTComm::get_instance()->get_world_comm(), -1);

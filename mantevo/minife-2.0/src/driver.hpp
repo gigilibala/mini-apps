@@ -278,8 +278,11 @@ driver(const Box& global_box, Box& my_box,
   if (matvec_with_comm_overlap) {
 #ifdef MINIFE_CSR_MATRIX
     rearrange_matrix_local_external(A);
-    cg_solve(A, b, x, matvec_overlap<MatrixType,VectorType>(), max_iters, tol,
-           num_iters, rnorm, cg_times);
+    int return_code = cg_solve(A, b, x, matvec_overlap<MatrixType,VectorType>(),
+							   max_iters, tol, num_iters, rnorm, cg_times);
+	if(return_code != 0){
+		return return_code;
+	}
 #else
     std::cout << "ERROR, matvec with overlapping comm/comp only works with CSR matrix."<<std::endl;
 #endif
@@ -400,7 +403,8 @@ driver(const Box& global_box, Box& my_box,
 #endif
   }
 
-  return verify_result;
+//  return verify_result;
+  return 0;
 }
 
 }//namespace miniFE

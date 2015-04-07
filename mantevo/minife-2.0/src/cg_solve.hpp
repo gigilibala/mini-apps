@@ -30,6 +30,7 @@
 
 #include <cmath>
 #include <limits>
+#include <unistd.h>
 
 #include <Vector_functions.hpp>
 #include <mytimer.hpp>
@@ -38,6 +39,8 @@
 #include <outstream.hpp>
 
 namespace miniFE {
+
+int fault_num = 1;
 
 template<typename Scalar>
 void print_vec(const std::vector<Scalar>& vec, const std::string& name)
@@ -70,7 +73,7 @@ bool breakdown(typename VectorType::ScalarType inner,
 template<typename OperatorType,
          typename VectorType,
          typename Matvec>
-void
+int
 cg_solve(OperatorType& A,
          const VectorType& b,
          VectorType& x,
@@ -90,8 +93,10 @@ cg_solve(OperatorType& A,
   timer_type total_time = mytimer();
 
   int myproc = 0;
+  int mysize = 0;
 #ifdef HAVE_MPI
   MPI_Comm_rank(FTComm::get_instance()->get_world_comm(), &myproc);
+  MPI_Comm_size(FTComm::get_instance()->get_world_comm(), &mysize);
 #ifdef USE_MPI_PCONTROL
   MPI_Pcontrol(1);
 #endif
@@ -101,7 +106,7 @@ cg_solve(OperatorType& A,
     std::cerr << "miniFE::cg_solve ERROR, A.has_local_indices is false, needs to be true. This probably means "
        << "miniFE::make_local_matrix(A) was not called prior to calling miniFE::cg_solve."
        << std::endl;
-    return;
+    return 0;
   }
 
   size_t nrows = A.rows.size();
@@ -118,6 +123,7 @@ cg_solve(OperatorType& A,
   LocalOrdinalType print_freq = max_iter/10;
   if (print_freq>50) print_freq = 50;
   if (print_freq<1)  print_freq = 1;
+  print_freq = 1;
 
   ScalarType one = 1.0;
   ScalarType zero = 0.0;
@@ -134,7 +140,6 @@ cg_solve(OperatorType& A,
 
   TICK(); rtrans = dot(r, r); TOCK(tDOT);
 
-//std::cout << "rtrans="<<rtrans<<std::endl;
 
   normr = std::sqrt(rtrans);
 
@@ -150,21 +155,30 @@ cg_solve(OperatorType& A,
 #endif
 
   Checkpointer cper;
-  int fault_num = 0;
   for(LocalOrdinalType k=1; k <= max_iter && normr > tolerance; ++k) {
-  restart:
-	  /* things do we need to save here:
-		 k
-		 rtrans
-		 oldrtrans
-		 p
-		 r
- 		 A
-	   */
-	  /* checkpointing */
-	  
-	  
-	  if(0 == k % cper.checkpoint_rate){
+restart:
+	/* things do we need to save here:
+	   k, rtrans, oldrtrans, p, r, A
+	*/
+#if USING_FAMPI	
+	/* checkpointing */
+	  if(FTComm::get_instance()->is_restarted()){
+		  /* restarting from failure */
+		  /* make checkpoint buffers or files ready */
+		  cper.make_restart_ready();
+		  /* read the checkpoint */
+		  cper.r_value(k);
+		  cper.r_value(rtrans);
+		  cper.r_value(oldrtrans);
+		  p.restart(cper);
+		  r.restart(cper);
+		  A.restart(cper);
+		  /* do the actual restarting */
+		  cper.restart();
+//		  k = 3;
+		  FTComm::get_instance()->set_restarted();
+
+	  }else if(0 == (k % cper.checkpoint_rate)){
 		  /* make checkpoint buffers or files ready */
 		  cper.make_checkpoint_ready();
 		  /* write the checkpoint */
@@ -178,7 +192,7 @@ cg_solve(OperatorType& A,
 		  cper.checkpoint();
 	  }
 
-
+#endif
     if (k == 1) {
       TICK(); waxpby(one, r, zero, r, p); TOCK(tWAXPY);
     }
@@ -217,14 +231,19 @@ cg_solve(OperatorType& A,
 	
 	MPI_Request tb_req;
 	int done, rc, num_tb_retries = 3;
+
 	MPI_Comm world = FTComm::get_instance()->get_world_comm();
+
 	MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req);
 
 	/* inject failure */
-#if 1
-	if(myproc == 2 && k == 2 && fault_num == 0){
-		*(int*)0 = 0;
-	}
+#if 0
+	if(k == 1 && fault_num > 0){
+    	if(myproc == 1){
+	        *(int*)0 = 0;
+        }
+		fault_num --;
+    }
 #endif
 
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
@@ -259,22 +278,13 @@ cg_solve(OperatorType& A,
 */
 				assert(comms[0] == FTComm::get_instance()->get_world_comm());
 				FTComm::get_instance()->repair();
-				std::cout << "going to restart" << std::endl;
-#if 1
-				/* restarting from failure */
-				/* make checkpoint buffers or files ready */
-				cper.make_restart_ready();
-				/* read the checkpoint */
-				cper.r_value(k);
-				cper.r_value(rtrans);
-				cper.r_value(oldrtrans);
-				p.restart(cper);
-				r.restart(cper);
-				A.restart(cper);
-				/* do the actual restarting */
-				cper.restart();
-				goto restart;
-#endif
+
+				MPI_Request_free(&tb_req);
+				for(int i = 0; i < A.request.size(); i++){
+					MPI_Request_free(&A.request[i]);
+				}
+
+				return -1;
 			}
 		}
 
@@ -304,7 +314,7 @@ cg_solve(OperatorType& A,
         my_cg_times[DOT] = tDOT;
         my_cg_times[MATVEC] = tMATVEC;
         my_cg_times[TOTAL] = mytimer() - total_time;
-        return;
+        return 0;
       }
       else brkdown_tol = 0.1 * p_ap_dot;
     }
@@ -336,6 +346,8 @@ cg_solve(OperatorType& A,
   my_cg_times[MATVEC] = tMATVEC;
   my_cg_times[MATVECDOT] = tMATVECDOT;
   my_cg_times[TOTAL] = mytimer() - total_time;
+
+  return 0;
 }
 
 }//namespace miniFE

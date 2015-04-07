@@ -34,6 +34,9 @@ public:
 		char file_name[100];
 		sprintf(file_name, "/tmp/%d.dat", rank);
 		ofs = new std::ofstream(file_name, std::ofstream::binary);
+		if(ofs == NULL){
+			std::cout << "file for checkpoint is not ready" << std::endl;
+		}
 
 	}
 
