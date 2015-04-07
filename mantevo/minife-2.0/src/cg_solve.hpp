@@ -220,17 +220,21 @@ cg_solve(OperatorType& A,
 	MPI_Comm world = FTComm::get_instance()->get_world_comm();
 	MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req);
 
-	if(myproc == 2 && k == 10 && fault_num == 0){
+	/* inject failure */
+#if 1
+	if(myproc == 2 && k == 2 && fault_num == 0){
 		*(int*)0 = 0;
 	}
-	
+#endif
+
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 
   retry_tryblocK:
 	MPI_Tryblock_finish_local(tb_req, A.request.size(), &A.request[0], reqs_timeout);
 
 	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, tb_timeout);
-	if(MPI_SUCCESS == rc){
+
+	if(MPI_SUCCESS != rc){
 		if(MPI_ERR_TIMEOUT == rc){
 			if(num_tb_retries-- > 0)
 				goto retry_tryblocK;
@@ -254,11 +258,10 @@ cg_solve(OperatorType& A,
 						" communicators failed, about to shrink" << endl;
 */
 				assert(comms[0] == FTComm::get_instance()->get_world_comm());
-				FTComm::repair();
-			}
+				FTComm::get_instance()->repair();
+				std::cout << "going to restart" << std::endl;
 #if 1
-			/* restarting from failure */
-			if(3 == k){
+				/* restarting from failure */
 				/* make checkpoint buffers or files ready */
 				cper.make_restart_ready();
 				/* read the checkpoint */
@@ -270,13 +273,12 @@ cg_solve(OperatorType& A,
 				A.restart(cper);
 				/* do the actual restarting */
 				cper.restart();
-//		goto restart;
-			}
+				goto restart;
 #endif
-
+			}
 		}
 
-		/* TODO: free the request in exchange externals */
+		/* free the request in exchange externals */
 		MPI_Request_free(&tb_req);
 		for(int i = 0; i < A.request.size(); i++){
 			MPI_Request_free(&A.request[i]);

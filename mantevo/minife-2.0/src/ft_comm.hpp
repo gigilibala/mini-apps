@@ -1,5 +1,6 @@
 #ifndef __ft_comm_hpp_
 #define __ft_comm_hpp_
+
 #include <mpi.h>
 #include <mpi-ext.h>
 
@@ -11,20 +12,19 @@ private:
 	static FTComm* ftcomm;
 	MPI_Comm world;
 
+	int myargc;
+	char** myargv;
+
 	/* call this right after the MPI_Init */
-	FTComm(){
+	FTComm(){}
 
-	}
-
-	~FTComm(){
-
-	}
+	~FTComm(){}
 
 public:
 
-	static void init(bool spawned);
+	void init(bool spawned, int argc, char** argv);
 
-	static void repair();
+	void repair();
 
 	static FTComm* get_instance();
 	

@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
   int numprocs = 1, myproc = 0;
   miniFE::initialize_mpi(argc, argv, numprocs, myproc);
 
-  miniFE::FTComm::init(params.spawned);
+  miniFE::FTComm::get_instance()->init(params.spawned, argc, argv);
 
   MPI_Comm_size(miniFE::FTComm::get_instance()->get_world_comm(), &numprocs);
   MPI_Comm_rank(miniFE::FTComm::get_instance()->get_world_comm(), &myproc);

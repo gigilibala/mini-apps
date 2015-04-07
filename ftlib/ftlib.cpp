@@ -30,11 +30,7 @@ int fampi_repair_comm_spawn(MPI_Comm new_comm, int num_new_procs, int argc, char
 	int error_codes;
 	int rank, size;
 	MPI_Comm_rank(new_comm, &rank);
-	
-	if(0 == rank)
-		std::cout << "about to spawn " << std::endl;
-	
-	
+		
 	rc = MPI_Comm_spawn(argv[0], &argv[1], num_new_procs, MPI_INFO_NULL,
 						0, new_comm, &intercomm, &error_codes);
 

@@ -27,7 +27,7 @@ public:
 	int checkpoint_rate;
 	void make_checkpoint_ready(){
 
-		std::cout << "getting ready to checkpoint" << std::endl;
+//		std::cout << "getting ready to checkpoint" << std::endl;
 		MPI_Comm world = FTComm::get_instance()->get_world_comm();
 		int rank;
 		MPI_Comm_rank(world, &rank);
@@ -39,7 +39,7 @@ public:
 
 	void make_restart_ready(){
 
-		std::cout << "getting ready to restart" << std::endl;
+//		std::cout << "getting ready to restart" << std::endl;
 		MPI_Comm world = FTComm::get_instance()->get_world_comm();
 		int rank;
 
@@ -73,6 +73,7 @@ public:
 
 		ofs->flush();
 		((std::ofstream*)ofs)->close();
+		std::cout << "checkpointed" << std::endl;
 		
 /*
 		MPI_Comm world = FTComm::get_world_comm();
@@ -100,6 +101,7 @@ public:
 
 		ifs->sync();
 		((std::ifstream*)ifs)->close();
+		std::cout << "checkpoint restarted" << std::endl;
 /*
 		MPI_Comm world = FTComm::get_world_comm();
 		MPI_Request reqs[2];
