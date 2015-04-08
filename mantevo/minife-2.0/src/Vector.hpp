@@ -64,8 +64,8 @@ struct Vector : ICheckpoint{
 
 	int checkpoint(Checkpointer& cper){
 
-		cper.cp_value<int>(startIndex);
-		cper.cp_value<int>(local_size);
+		cper.cp_value<GlobalOrdinal>(startIndex);
+		cper.cp_value<LocalOrdinal>(local_size);
 		
 		cper.cp_vector<Scalar>(coefs);
 
@@ -74,8 +74,8 @@ struct Vector : ICheckpoint{
 
 	int restart(Checkpointer& cper){
 
-		cper.r_value<int>(startIndex);
-		cper.r_value<int>(local_size);
+		cper.r_value<GlobalOrdinal>(startIndex);
+		cper.r_value<LocalOrdinal>(local_size);
 		
 		cper.r_vector<Scalar>(coefs);
 		return 0;

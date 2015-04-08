@@ -336,8 +336,8 @@ make_local_matrix(MatrixType& A)
   }
 
   std::vector<int>& neighbors = A.neighbors;
-  std::vector<int>& recv_length = A.recv_length;
-  std::vector<int>& send_length = A.send_length;
+  std::vector<LocalOrdinal>& recv_length = A.recv_length;
+  std::vector<LocalOrdinal>& send_length = A.send_length;
 
   neighbors.resize(num_recv_neighbors, 0);
   A.request.resize(num_recv_neighbors);

@@ -151,6 +151,7 @@ driver(const Box& global_box, Box& my_box,
     std::cout.width(30);
     std::cout << "creating/filling mesh...";
     std::cout.flush();
+	std::cout << params.nx << " "  << params.ny << " " << params.nz << std::endl;
   }
 
   timer_type t_start = mytimer();
@@ -319,7 +320,7 @@ driver(const Box& global_box, Box& my_box,
     ydoc.get("Global Run Parameters")->add("GlobalOrdinalType",TypeTraits<GlobalOrdinal>::name());
     ydoc.get("Global Run Parameters")->add("LocalOrdinalType",TypeTraits<LocalOrdinal>::name());
     ydoc.add(title,"");
-    ydoc.get(title)->add("Iterations",num_iters);
+    ydoc.get(title)->add("Iterations",(int)num_iters);
     ydoc.get(title)->add("Final Resid Norm",rnorm);
 
     GlobalOrdinal global_nrows = global_nx;

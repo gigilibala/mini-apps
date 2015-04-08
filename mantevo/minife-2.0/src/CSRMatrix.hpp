@@ -110,7 +110,48 @@ CSRMatrix : ICheckpoint{
 		return size;
 	}
 	
+	int checkpoint(Checkpointer& cper){
+		
+		cper.cp_value<bool>(has_local_indices);
+		cper.cp_value<LocalOrdinal>(num_cols);
 
+		cper.cp_vector<GlobalOrdinal>(rows);
+		cper.cp_vector<LocalOrdinal>(row_offsets);
+		cper.cp_vector<LocalOrdinal>(row_offsets_external);
+		cper.cp_vector<GlobalOrdinal>(packed_cols);
+		cper.cp_vector<Scalar>(packed_coefs);
+#ifdef HAVE_MPI
+		cper.cp_vector<GlobalOrdinal>(external_index);
+		cper.cp_vector<GlobalOrdinal>(external_local_index);
+		cper.cp_vector<GlobalOrdinal>(elements_to_send);
+		cper.cp_vector<int>(neighbors);
+		cper.cp_vector<LocalOrdinal>(recv_length);
+		cper.cp_vector<LocalOrdinal>(send_length);
+#endif
+		return 0;
+	}
+
+	int restart(Checkpointer& cper){
+
+		cper.r_value<bool>(has_local_indices);
+		cper.r_value<LocalOrdinal>(num_cols);
+
+		cper.r_vector<GlobalOrdinal>(rows);
+		cper.r_vector<LocalOrdinal>(row_offsets);
+		cper.r_vector<LocalOrdinal>(row_offsets_external);
+		cper.r_vector<GlobalOrdinal>(packed_cols);
+		cper.r_vector<Scalar>(packed_coefs);
+#ifdef HAVE_MPI
+		cper.r_vector<GlobalOrdinal>(external_index);
+		cper.r_vector<GlobalOrdinal>(external_local_index);
+		cper.r_vector<GlobalOrdinal>(elements_to_send);
+		cper.r_vector<int>(neighbors);
+		cper.r_vector<LocalOrdinal>(recv_length);
+		cper.r_vector<LocalOrdinal>(send_length);
+
+#endif
+		return 0;
+	}
 
 	void print_sizes(){
 		std::cout << "has_local_indices: " << has_local_indices << std::endl;
@@ -132,50 +173,6 @@ CSRMatrix : ICheckpoint{
 #endif
 	}
 
-	int checkpoint(Checkpointer& cper){
-		
-		cper.cp_value<bool>(has_local_indices);
-		cper.cp_value<int>(num_cols);
-
-		cper.cp_vector<int>(rows);
-		cper.cp_vector<int>(row_offsets);
-		cper.cp_vector<int>(row_offsets_external);
-		cper.cp_vector<int>(packed_cols);
-		cper.cp_vector<Scalar>(packed_coefs);
-#ifdef HAVE_MPI
-		cper.cp_vector<int>(external_index);
-		cper.cp_vector<int>(external_local_index);
-		cper.cp_vector<int>(elements_to_send);
-		cper.cp_vector<int>(neighbors);
-		cper.cp_vector<int>(recv_length);
-		cper.cp_vector<int>(send_length);
-#endif
-		return 0;
-	}
-
-	int restart(Checkpointer& cper){
-
-		cper.r_value<bool>(has_local_indices);
-		cper.r_value<int>(num_cols);
-
-		cper.r_vector<int>(rows);
-		cper.r_vector<int>(row_offsets);
-		cper.r_vector<int>(row_offsets_external);
-		cper.r_vector<int>(packed_cols);
-		cper.r_vector<Scalar>(packed_coefs);
-#ifdef HAVE_MPI
-		cper.r_vector<int>(external_index);
-		cper.r_vector<int>(external_local_index);
-		cper.r_vector<int>(elements_to_send);
-		cper.r_vector<int>(neighbors);
-		cper.r_vector<int>(recv_length);
-		cper.r_vector<int>(send_length);
-
-#endif
-		return 0;
-	}
-
-	
   size_t num_nonzeros() const
   {
     return row_offsets[row_offsets.size()-1];
