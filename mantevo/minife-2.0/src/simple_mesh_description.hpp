@@ -120,6 +120,7 @@ std::cout<<"y=0 BC, node "<<nodeID<<", ("<<ix<<",0,"<<iz<<")"<<std::endl;
           GlobalOrdinal row = map_id_to_row(nodeID);
           if (row < 0) {
             std::cout<<"on the y==0 face (ix="<<ix<<", iz="<<iz<<"), ERROR: found negative row ("<<row<<") for nodeID="<<nodeID<<std::endl;
+			MPI_Abort(MPI_COMM_WORLD, 0);
           }
           bc_rows_0.insert(row);
         }
