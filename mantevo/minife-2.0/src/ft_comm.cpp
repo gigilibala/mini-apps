@@ -51,12 +51,12 @@ namespace miniFE{
 		MPI_Comm shrinked_comm, spawned_comm, nwe;
 		MPI_Comm local_world = world;
 		
-		std::cout << "repairing the communicator" << std::endl;
+//		std::cout << "repairing the communicator" << std::endl;
 
 		fampi_repair_comm_shrink(local_world, &shrinked_comm);
 		MPI_Comm_free(&local_world);
 
-		std::cout << "going to spawn" << std::endl;
+//		std::cout << "going to spawn" << std::endl;
 
 		fampi_repair_comm_spawn(shrinked_comm, 1, myargc, myargv, &spawned_comm);
 		MPI_Comm_free(&shrinked_comm);

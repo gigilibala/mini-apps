@@ -40,7 +40,11 @@ enum CG_TIMES {
   MATVEC = 2,
   MATVECDOT = 3,
   TOTAL = 4,
-  NUM_TIMERS = 5
+  TRYBLOCK = 5,
+  CHECKPOINT = 6,
+  RECOVERY = 7,
+  NUM_TIMERS = 8
+
 };
 
 //Use TICK and TOCK to time a code section

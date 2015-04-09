@@ -89,8 +89,10 @@ cg_solve(OperatorType& A,
   typedef typename OperatorType::LocalOrdinalType LocalOrdinalType;
   typedef typename TypeTraits<ScalarType>::magnitude_type magnitude_type;
 
+  int exit_code = 0;
   timer_type t0 = 0, tWAXPY = 0, tDOT = 0, tMATVEC = 0, tMATVECDOT = 0;
   timer_type total_time = mytimer();
+  timer_type tTRYBLOCK = 0, tCHECKPOINT = 0, tRECOVERY = 0;
 
   int myproc = 0;
   int mysize = 0;
@@ -106,7 +108,7 @@ cg_solve(OperatorType& A,
     std::cerr << "miniFE::cg_solve ERROR, A.has_local_indices is false, needs to be true. This probably means "
        << "miniFE::make_local_matrix(A) was not called prior to calling miniFE::cg_solve."
        << std::endl;
-    return 0;
+    return exit_code;
   }
 
   size_t nrows = A.rows.size();
@@ -155,16 +157,23 @@ cg_solve(OperatorType& A,
 #endif
 
   Checkpointer cper;
+  MPI_Timeout reqs_timeout, tb_timeout;
+  MPI_Timeout_set_seconds(&reqs_timeout, 0.1);
+  MPI_Timeout_set_seconds(&tb_timeout, 2.0);
+  int death_iter = 2;
+  double tt1=0.0, tt2= 0.0;
+
   for(LocalOrdinalType k=1; k <= max_iter && normr > tolerance; ++k) {
 restart:
-	/* things do we need to save here:
+	/* things we need to save here:
 	   k, rtrans, oldrtrans, p, r, A
 	*/
-#if USING_FAMPI	
 	/* checkpointing */
 	  if(FTComm::get_instance()->is_restarted()){
+	      TICK();
 		  /* restarting from failure */
 		  /* make checkpoint buffers or files ready */
+#ifdef CHECKPOINTING
 		  cper.make_restart_ready();
 		  /* read the checkpoint */
 		  cper.r_value(k);
@@ -175,11 +184,17 @@ restart:
 		  A.restart(cper);
 		  /* do the actual restarting */
 		  cper.restart();
+#else
+		  k = death_iter + 1;
+#endif
 //		  k = 3;
 		  FTComm::get_instance()->set_restarted();
+		  TOCK(tCHECKPOINT);
 
 	  }else if(0 == (k % cper.checkpoint_rate)){
 		  /* make checkpoint buffers or files ready */
+	      TICK();
+#ifdef CHECKPOINTING
 		  cper.make_checkpoint_ready();
 		  /* write the checkpoint */
 		  cper.cp_value(k);
@@ -190,9 +205,10 @@ restart:
 		  A.checkpoint(cper);
 		  /* do the actual checkpointing */
 		  cper.checkpoint();
+#endif
+		  TOCK(tCHECKPOINT);
 	  }
 
-#endif
     if (k == 1) {
       TICK(); waxpby(one, r, zero, r, p); TOCK(tWAXPY);
     }
@@ -224,45 +240,46 @@ restart:
 
 #ifndef USING_FAMPI
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
-#else
-	MPI_Timeout reqs_timeout, tb_timeout;
-	MPI_Timeout_set_seconds(&reqs_timeout, 0.0001);
-	MPI_Timeout_set_seconds(&tb_timeout, 1.0);	
-	
+#else	
 	MPI_Request tb_req;
 	int done, rc, num_tb_retries = 3;
 
 	MPI_Comm world = FTComm::get_instance()->get_world_comm();
-
-	MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req);
-
-	/* inject failure */
-#if 0
-	if(k == 1 && fault_num > 0){
-    	if(myproc == 1){
-	        *(int*)0 = 0;
-        }
-		fault_num --;
-    }
-#endif
+	TICK(); MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tb_req); TOCK(tTRYBLOCK);
 
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 
+	/* inject failure */
+#if 0
+	if(k == death_iter){
+    	if(myproc == 95){
+	        *(int*)0 = 0;
+        }
+    }
+#endif
+
   retry_tryblocK:
-	MPI_Tryblock_finish_local(tb_req, A.request.size(), &A.request[0], reqs_timeout);
-
+	TICK();
+//	MPI_Tryblock_finish_local(tb_req, A.request.size(), &A.request[0], reqs_timeout);
+//	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, tb_timeout);
+	tt1 = MPI_Wtime();
+	MPI_Tryblock_finish(tb_req, A.request.size(), &A.request[0]);
+//	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, MPI_TIMEOUT_ZERO);
 	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, tb_timeout);
+	tt2 += MPI_Wtime() - tt1;
+	TOCK(tTRYBLOCK);
 
-	if(MPI_SUCCESS != rc){
-		if(MPI_ERR_TIMEOUT == rc){
-			if(num_tb_retries-- > 0)
-				goto retry_tryblocK;
-			else
-				MPI_Abort(world, 0);
-		}
-		
+	if(MPI_ERR_TIMEOUT == rc){
+		if(num_tb_retries-- > 0)
+			goto retry_tryblocK;
+		else
+			MPI_Abort(world, 0);
+	}else if(MPI_SUCCESS != rc){
+#if 1
+
 		if(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc){
 
+			TICK();
 			int error_codes = MPI_ERR_PROC_FAILED;
 			MPI_Comm comms[1];
 			int comm_count;
@@ -276,6 +293,7 @@ restart:
 					cout << rank << " tryblock failed with " << comm_count <<
 						" communicators failed, about to shrink" << endl;
 */
+//				sleep(1);
 				assert(comms[0] == FTComm::get_instance()->get_world_comm());
 				FTComm::get_instance()->repair();
 
@@ -283,9 +301,15 @@ restart:
 				for(int i = 0; i < A.request.size(); i++){
 					MPI_Request_free(&A.request[i]);
 				}
+				TOCK(tRECOVERY);
+				/* set the timeings */
+//				std::cout << "recovered" << std::endl;
 
-				return -1;
+				/* free the memory now */
+				exit_code = -1;
+				goto cleanup;
 			}
+			TOCK(tRECOVERY);
 		}
 
 		/* free the request in exchange externals */
@@ -293,6 +317,7 @@ restart:
 		for(int i = 0; i < A.request.size(); i++){
 			MPI_Request_free(&A.request[i]);
 		}
+#endif
 	}
 #endif
 	
@@ -310,12 +335,13 @@ restart:
         os << "ERROR, numerical breakdown!"<<std::endl;
 #endif
         //update the timers before jumping out.
-        my_cg_times[WAXPY] = tWAXPY;
-        my_cg_times[DOT] = tDOT;
-        my_cg_times[MATVEC] = tMATVEC;
-        my_cg_times[TOTAL] = mytimer() - total_time;
-        return 0;
-      }
+		goto cleanup;
+//        my_cg_times[WAXPY] += tWAXPY;
+//        my_cg_times[DOT] += tDOT;
+//        my_cg_times[MATVEC] += tMATVEC;
+//        my_cg_times[TOTAL] += mytimer() - total_time;
+//        return 0;
+      } 
       else brkdown_tol = 0.1 * p_ap_dot;
     }
     alpha = rtrans/p_ap_dot;
@@ -341,13 +367,19 @@ restart:
 #endif
 #endif
 
-  my_cg_times[WAXPY] = tWAXPY;
-  my_cg_times[DOT] = tDOT;
-  my_cg_times[MATVEC] = tMATVEC;
-  my_cg_times[MATVECDOT] = tMATVECDOT;
-  my_cg_times[TOTAL] = mytimer() - total_time;
+cleanup:
+  if(myproc == 0)
+	  std::cout << "time tb is " << tt2 << std::endl;
+  my_cg_times[WAXPY] += tWAXPY;
+  my_cg_times[DOT] += tDOT;
+  my_cg_times[MATVEC] += tMATVEC;
+  my_cg_times[MATVECDOT] += tMATVECDOT;
+  my_cg_times[CHECKPOINT] += tCHECKPOINT;
+  my_cg_times[RECOVERY] += tRECOVERY;
+  my_cg_times[TRYBLOCK] += tTRYBLOCK;
+  my_cg_times[TOTAL] += mytimer() - total_time;
 
-  return 0;
+  return exit_code;
 }
 
 }//namespace miniFE

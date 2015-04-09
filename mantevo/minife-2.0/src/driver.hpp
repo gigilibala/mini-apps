@@ -122,7 +122,7 @@ template<typename Scalar,
          typename GlobalOrdinal>
 int
 driver(const Box& global_box, Box& my_box,
-       Parameters& params, YAML_Doc& ydoc)
+       Parameters& params, YAML_Doc& ydoc, timer_type cg_times[])
 {
   int global_nx = global_box[0][1];
   int global_ny = global_box[1][1];
@@ -244,8 +244,6 @@ driver(const Box& global_box, Box& my_box,
   typedef typename TypeTraits<Scalar>::magnitude_type magnitude;
   magnitude rnorm = 0;
   magnitude tol = std::numeric_limits<magnitude>::epsilon();
-
-  timer_type cg_times[NUM_TIMERS];
 
   typedef Vector<Scalar,LocalOrdinal,GlobalOrdinal> VectorType;
 
@@ -382,6 +380,12 @@ driver(const Box& global_box, Box& my_box,
       ydoc.get(title)->add("MATVEC Mflops",mv_mflops);
     else
       ydoc.get(title)->add("MATVEC Mflops","inf");
+
+#if USING_FAMPI
+    ydoc.get(title)->add("TRYBLOCK Time",cg_times[TRYBLOCK]);
+    ydoc.get(title)->add("CHECKPOINT Time",cg_times[CHECKPOINT]);
+    ydoc.get(title)->add("RECOVERY Time",cg_times[RECOVERY]);
+#endif
 
 #ifdef MINIFE_FUSED
     ydoc.get(title)->add("MATVECDOT Time",cg_times[MATVECDOT]);

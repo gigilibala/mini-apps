@@ -52,6 +52,7 @@
 #include <driver.hpp>
 #include <YAML_Doc.hpp>
 #include <ft_comm.hpp>
+#include <mytimer.hpp>
 
 #if MINIFE_INFO != 0
 #include <miniFE_info.hpp>
@@ -93,6 +94,11 @@ int main(int argc, char** argv) {
 
   miniFE::FTComm::get_instance()->init(params.spawned, argc, argv);
 
+  miniFE::timer_type cg_times[miniFE::NUM_TIMERS];
+  for (int i = 0; i < miniFE::NUM_TIMERS; i++)
+	  cg_times[i] = 0.0;
+
+
 restart:
   
   MPI_Comm_size(miniFE::FTComm::get_instance()->get_world_comm(), &numprocs);
@@ -126,7 +132,7 @@ restart:
 
 #ifdef HAVE_MPI
 	  MPI_Datatype mpi_dtype = miniFE::TypeTraits<MINIFE_GLOBAL_ORDINAL>::mpi_type();
-#ifdef USING_FAMPI
+#ifdef NONBLOCKING
 	  /* at the first, doesn't need any fault-tolerant */
 	  MPI_Request req1;
 	  MPI_Status stat1;
@@ -169,7 +175,7 @@ restart:
   //the makefile or on the make command-line.
 
   int return_code =
-     miniFE::driver< MINIFE_SCALAR, MINIFE_LOCAL_ORDINAL, MINIFE_GLOBAL_ORDINAL>(global_box, my_box, params, doc);
+	  miniFE::driver< MINIFE_SCALAR, MINIFE_LOCAL_ORDINAL, MINIFE_GLOBAL_ORDINAL>(global_box, my_box, params, doc, cg_times);
   if(return_code != 0){
 	  goto restart;
   }
@@ -185,7 +191,7 @@ restart:
    long long int max_rss = 0;
 
 #ifdef HAVE_MPI
-#ifdef USING_FAMPI
+#ifdef NONBLOCKING
    /* at the end. doesn't need fault-tolerant */
    MPI_Request req2[2];
    MPI_Status stat2[2];

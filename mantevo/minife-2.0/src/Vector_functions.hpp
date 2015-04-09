@@ -218,7 +218,7 @@ typename TypeTraits<typename Vector::ScalarType>::magnitude_type
 #ifdef HAVE_MPI
   magnitude local_dot = result, global_dot = 0;
   MPI_Datatype mpi_dtype = TypeTraits<magnitude>::mpi_type();
-#ifdef USING_FAMPI
+#ifdef NONBLOCKING
   MPI_Request allreq;
   MPI_Status allstat;
   MPI_Iallreduce(&local_dot, &global_dot, 1, mpi_dtype, MPI_SUM, FTComm::get_instance()->get_world_comm(), &allreq);

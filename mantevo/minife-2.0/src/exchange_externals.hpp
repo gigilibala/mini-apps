@@ -221,8 +221,8 @@ begin_exchange_externals(MatrixType& A,
   // Post receives first
   for(int i=0; i<num_neighbors; ++i) {
     int n_recv = recv_length[i];
-    MPI_Irecv(x_external, n_recv, mpi_dtype, neighbors[i], MPI_MY_TAG,
-              FTComm::get_instance()->get_world_comm(), &exch_ext_requests[i]);
+    assert(MPI_SUCCESS == MPI_Irecv(x_external, n_recv, mpi_dtype, neighbors[i], MPI_MY_TAG,
+									FTComm::get_instance()->get_world_comm(), &exch_ext_requests[i]));
     x_external += n_recv;
   }
 
@@ -242,8 +242,8 @@ begin_exchange_externals(MatrixType& A,
   for(int i=0; i<num_neighbors; ++i) {
     int n_send = send_length[i];
 #ifdef USING_FAMPI
-    MPI_Isend(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
-			  FTComm::get_instance()->get_world_comm(), &exch_ext_requests[num_neighbors+i]);
+    assert(MPI_SUCCESS == MPI_Isend(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
+									FTComm::get_instance()->get_world_comm(), &exch_ext_requests[num_neighbors+i]));
 #else
     MPI_Send(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
              FTComm::get_instance()->get_world_comm());
@@ -264,8 +264,9 @@ finish_exchange_externals(MatrixType& A)
   // Complete the reads issued above
   //
 #if USING_FAMPI
-	MPI_Timeout timeout;
-    MPI_Timeout_set_seconds(&timeout, 1.0);
+//	MPI_Timeout timeout;
+//    MPI_Timeout_set_seconds(&timeout, 1.0);
+	MPI_Timeout timeout = MPI_TIMEOUT_ZERO; 
 	MPI_Request* reqs = &A.request[0];
 	return MPI_Waitall_local(A.request.size(), reqs, MPI_STATUS_IGNORE, timeout);
 #else
