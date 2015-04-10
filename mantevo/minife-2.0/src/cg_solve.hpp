@@ -252,7 +252,7 @@ restart:
 	/* inject failure */
 #if 1
 	if(k == death_iter){
-    	if(myproc == 2){
+    	if(myproc == 2 || myproc == 10){
 	        *(int*)0 = 0;
         }
     }
@@ -295,7 +295,7 @@ restart:
 */
 //				sleep(1);
 				assert(comms[0] == FTComm::get_instance()->get_world_comm());
-				FTComm::get_instance()->repair();
+				FTComm::get_instance()->repair(tb_req);
 
 				MPI_Request_free(&tb_req);
 				for(int i = 0; i < A.request.size(); i++){

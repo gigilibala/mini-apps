@@ -98,6 +98,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < miniFE::NUM_TIMERS; i++)
 	  cg_times[i] = 0.0;
 
+  miniFE::timer_type start_time = miniFE::mytimer();
 
 restart:
   
@@ -110,8 +111,6 @@ restart:
   MPI_Pcontrol(0);
 #endif
 #endif
-
-  miniFE::timer_type start_time = miniFE::mytimer();
 
 #ifdef MINIFE_DEBUG
   outstream(numprocs, myproc);

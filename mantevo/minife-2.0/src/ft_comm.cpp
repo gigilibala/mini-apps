@@ -45,7 +45,7 @@ namespace miniFE{
 	}
 
 
-	void FTComm::repair(){
+	void FTComm::repair(MPI_Request tb_req){
  
 #if USING_FAMPI
 		MPI_Comm shrinked_comm, spawned_comm, nwe;
@@ -53,12 +53,19 @@ namespace miniFE{
 		
 //		std::cout << "repairing the communicator" << std::endl;
 
+		int err_code = MPI_ERR_PROC_FAILED;
+		int spawn_size = 1;
+/*
+		MPI_Group fgroup;
+		MPI_Get_failed_group(tb_req, 1, &err_code, local_world, &fgroup);
+		MPI_Group_size(fgroup, &spawn_size);
+		std::cout << "spawn size is:" << spawn_size << std::endl;
+*/
 		fampi_repair_comm_shrink(local_world, &shrinked_comm);
 		MPI_Comm_free(&local_world);
 
 //		std::cout << "going to spawn" << std::endl;
-
-		fampi_repair_comm_spawn(shrinked_comm, 1, myargc, myargv, &spawned_comm);
+		fampi_repair_comm_spawn(shrinked_comm, spawn_size, myargc, myargv, &spawned_comm);
 		MPI_Comm_free(&shrinked_comm);
 
 		MPI_Intercomm_merge(spawned_comm, 1, &local_world);

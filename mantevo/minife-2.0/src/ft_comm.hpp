@@ -27,7 +27,7 @@ public:
 
 	void init(bool spawned, int argc, char** argv);
 
-	void repair();
+	void repair(MPI_Request tb_req);
 
 	static FTComm* get_instance();
 	
