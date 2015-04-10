@@ -125,7 +125,7 @@ cg_solve(OperatorType& A,
   LocalOrdinalType print_freq = max_iter/10;
   if (print_freq>50) print_freq = 50;
   if (print_freq<1)  print_freq = 1;
-  print_freq = 1;
+//  print_freq = 1;
 
   ScalarType one = 1.0;
   ScalarType zero = 0.0;
@@ -250,9 +250,9 @@ restart:
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 
 	/* inject failure */
-#if 0
+#if 1
 	if(k == death_iter){
-    	if(myproc == 95){
+    	if(myproc == 2){
 	        *(int*)0 = 0;
         }
     }
@@ -262,11 +262,11 @@ restart:
 	TICK();
 //	MPI_Tryblock_finish_local(tb_req, A.request.size(), &A.request[0], reqs_timeout);
 //	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, tb_timeout);
-	tt1 = MPI_Wtime();
+
 	MPI_Tryblock_finish(tb_req, A.request.size(), &A.request[0]);
 //	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, MPI_TIMEOUT_ZERO);
 	rc = MPI_Wait_local(&tb_req, MPI_STATUS_IGNORE, tb_timeout);
-	tt2 += MPI_Wtime() - tt1;
+
 	TOCK(tTRYBLOCK);
 
 	if(MPI_ERR_TIMEOUT == rc){
@@ -368,8 +368,6 @@ restart:
 #endif
 
 cleanup:
-  if(myproc == 0)
-	  std::cout << "time tb is " << tt2 << std::endl;
   my_cg_times[WAXPY] += tWAXPY;
   my_cg_times[DOT] += tDOT;
   my_cg_times[MATVEC] += tMATVEC;
