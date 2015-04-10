@@ -252,7 +252,7 @@ restart:
 	/* inject failure */
 #if 1
 	if(k == death_iter){
-    	if(myproc == 2 || myproc == 10){
+    	if(myproc == 2 /* || myproc == 10 */){
 	        *(int*)0 = 0;
         }
     }
