@@ -385,6 +385,13 @@ driver(const Box& global_box, Box& my_box,
     ydoc.get(title)->add("TRYBLOCK Time",cg_times[TRYBLOCK]);
     ydoc.get(title)->add("CHECKPOINT Time",cg_times[CHECKPOINT]);
     ydoc.get(title)->add("RECOVERY Time",cg_times[RECOVERY]);
+
+    ydoc.get(title)->add("FQUERY Time",cg_times[FQUERY]);
+    ydoc.get(title)->add("SHRINK Time",cg_times[SHRINK]);
+    ydoc.get(title)->add("SPAWN Time",cg_times[SPAWN]);
+    ydoc.get(title)->add("MERGE Time",cg_times[MERGE]);
+
+
 #endif
 
 #ifdef MINIFE_FUSED

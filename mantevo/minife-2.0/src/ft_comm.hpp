@@ -3,6 +3,7 @@
 
 #include <mpi.h>
 #include <mpi-ext.h>
+#include <mytimer.hpp>
 
 namespace miniFE{
 
@@ -27,7 +28,7 @@ public:
 
 	void init(bool spawned, int argc, char** argv);
 
-	void repair(MPI_Request tb_req);
+	void repair(MPI_Request tb_req, timer_type* cg_times);
 
 	static FTComm* get_instance();
 	

@@ -1,6 +1,8 @@
+
 #include <ft_comm.hpp>
 #include <iostream>
 #include <ftlib.hpp>
+#include <mytimer.hpp>
 
 namespace miniFE{
 
@@ -45,7 +47,7 @@ namespace miniFE{
 	}
 
 
-	void FTComm::repair(MPI_Request tb_req){
+	void FTComm::repair(MPI_Request tb_req, timer_type* cg_times){
  
 #if USING_FAMPI
 		MPI_Comm shrinked_comm, spawned_comm, nwe;
@@ -55,26 +57,38 @@ namespace miniFE{
 
 		int err_code = MPI_ERR_PROC_FAILED;
 		int spawn_size = 1;
-/*
+		timer_type t0 = 0, tFQUERY = 0, tSHRINK = 0, tSPAWN = 0, tMERGE = 0;
+		
+		TICK();
 		MPI_Group fgroup;
 		MPI_Get_failed_group(tb_req, 1, &err_code, local_world, &fgroup);
 		MPI_Group_size(fgroup, &spawn_size);
-		std::cout << "spawn size is:" << spawn_size << std::endl;
-*/
+		TOCK(tFQUERY);
+		
+		TICK();
 		fampi_repair_comm_shrink(local_world, &shrinked_comm);
 		MPI_Comm_free(&local_world);
-
+		TOCK(tSHRINK);
+		
 //		std::cout << "going to spawn" << std::endl;
+		TICK();
 		fampi_repair_comm_spawn(shrinked_comm, spawn_size, myargc, myargv, &spawned_comm);
 		MPI_Comm_free(&shrinked_comm);
+		TOCK(tSPAWN);
 
+		TICK();
 		MPI_Intercomm_merge(spawned_comm, 1, &local_world);
 		MPI_Comm_free(&spawned_comm);
+		TOCK(tMERGE);
 
 		world = local_world;
 		MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
 
-
+		cg_times[FQUERY] += tFQUERY;
+		cg_times[SHRINK] += tSHRINK;
+		cg_times[SPAWN] += tSPAWN;
+		cg_times[MERGE] += tMERGE;
+		
 		restarted = true;
 
 		/* set size, argc, and argv stuff */

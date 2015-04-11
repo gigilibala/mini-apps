@@ -43,8 +43,11 @@ enum CG_TIMES {
   TRYBLOCK = 5,
   CHECKPOINT = 6,
   RECOVERY = 7,
-  NUM_TIMERS = 8
-
+  SHRINK = 8,
+  SPAWN = 9,
+  MERGE = 10,
+  FQUERY = 11,
+  NUM_TIMERS = 12
 };
 
 //Use TICK and TOCK to time a code section
