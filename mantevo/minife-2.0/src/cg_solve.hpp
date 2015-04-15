@@ -185,7 +185,7 @@ restart:
 		  /* do the actual restarting */
 		  cper.restart();
 #else
-		  k = death_iter + 1;
+		  k = DEATH_ITER + 1;
 #endif
 //		  k = 3;
 		  FTComm::get_instance()->set_restarted();
@@ -251,8 +251,8 @@ restart:
 
 	/* inject failure */
 #ifdef DEATH_ITER
-	if(k == DEATHITER){
-    	if(myproc == 2 /* || myproc == 10 */ ){
+	if(k == DEATH_ITER){
+    	if(myproc == 2  || myproc == 20  ){
 	        *(int*)0 = 0;
         }
     }
