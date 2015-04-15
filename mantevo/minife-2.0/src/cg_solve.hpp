@@ -250,8 +250,8 @@ restart:
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 
 	/* inject failure */
-#if 1
-	if(k == death_iter){
+#ifdef DEATH_ITER
+	if(k == DEATHITER){
     	if(myproc == 2 /* || myproc == 10 */ ){
 	        *(int*)0 = 0;
         }
