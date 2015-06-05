@@ -12,6 +12,12 @@ LDFLAGS  =
 FTLIB    = -L../ftlib -lfa_mpi
 LIBS     = $(FTLIB)
 
+DEFINES =
+# DEFINES += -DALLREDUCE
+# DEFINES += -DIALLREDUCE
+# DEFINES += -DWITH_FAILURE
+# DEFINES += -DWITH_FAULT
+
 USRPATH := $(shell echo $(USRPATH))
 
 SOURCES=tryblock_regression.c
@@ -21,15 +27,15 @@ TARGETS=$(patsubst %.c,%.x,$(SOURCES))
 all: $(TARGETS)
 
 %.x: %.c
-	$(CC) $(CFLAGS) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) $(CXXFLAGS) $(DEFINES) $< -o $@ $(LDFLAGS) $(LIBS)
 
 %.x: %.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(LIBS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEFINES) $< -o $@ $(LDFLAGS) $(LIBS)
 
 install: all
 	cp $(TARGETS) $(USRPATH)/bin
 
 clean: 
-	rm $(TARGETS) *.o
+	rm $(TARGETS)
 
 .PHONY: all clean install 

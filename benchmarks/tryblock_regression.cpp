@@ -4,11 +4,14 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include <assert.h>
+#include <unistd.h>
 
+/*
 #define ALLREDUCE     0
 #define IALLREDUCE    0
 #define WITH_FAILURE  0
 #define WITH_FAULT    0
+*/
 
 int main(int argc, char** argv)
 {
@@ -35,7 +38,7 @@ int main(int argc, char** argv)
 	MPI_Timeout_set_seconds(&timeout, 1.0);
 
 
-#if WITH_FAILURE
+#ifdef WITH_FAILURE
 	for(i=1; i<argc; i++){
 		if(rank == atoi(argv[i])){
 			*(int*)0 = 0;
@@ -58,7 +61,7 @@ retry:
 #endif
 
 
-#if WITH_FAULT
+#ifdef WITH_FAULT
 	int num_failed_div = 0;
 	if(argc > 1)
 		num_failed_div = atoi(argv[1]);
@@ -72,15 +75,15 @@ retry:
 //		printf("iter %d\n", i);
 
 		int a[2], b[2];
-#if IALLREDUCE
+#ifdef IALLREDUCE
 		MPI_Request al_req;
 		MPI_Iallreduce(a, b, 2, MPI_INT, MPI_BAND, world, &al_req);
 		MPI_Wait(&al_req, MPI_STATUS_IGNORE);
-#elif ALLREDUCE
+#elif defined(ALLREDUCE)
 		MPI_Allreduce(a, b, 2, MPI_INT, MPI_BAND, world);
 #else
 		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tryreq);
-#if WITH_FAULT
+#ifdef WITH_FAULT
 		if(num_failed_div && !(rank % num_failed_div))
 			MPI_Request_raise_error(tryreq, rank+size);
 #endif
@@ -92,7 +95,7 @@ retry:
 	}		
 	t2 = MPI_Wtime();
 
-#if WITH_FAILURE
+#ifdef WITH_FAILURE
 	MPI_Comm newworld;
 //	if(rank == 0) printf("calling shrink\n");
 	MPI_Comm_ishrink(world, &newworld, &shrinkreq);
