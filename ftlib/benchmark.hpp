@@ -1,4 +1,6 @@
 #include <iostream>
+#include <list>
+
 
 using namespace std;
 
@@ -12,5 +14,5 @@ class Benchmark{
 
 	void add_sample(double sample);
 
-	double get_mean_percentile(int percentile);
+	double get_low_mean_percentile(int percentile);
 };
