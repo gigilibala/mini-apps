@@ -1,6 +1,6 @@
 # COPYRIGHT @ Amin Hassani 2015
 
-PROJECTS = stencil/1d mantevo/minife-2.0/src
+PROJECTS = stencil/1d mantevo/minife-2.0/src benchmarks
 LIBRARIES= ftlib
 
 TARGETS  = $(LIBRARIES) $(PROJECTS)
