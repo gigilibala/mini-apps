@@ -9,11 +9,11 @@ CFLAGS   = -O2 -ggdb
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. -I../ftlib/
 LDFLAGS  = 
-FTLIB    = -L../ftlib -lfa_mpi
+FTLIB    = -L../ftlib
 LIBS     = $(FTLIB)
 
 DEFINES =
-# DEFINES += -DTRYBLOCK
+DEFINES += -DTRYBLOCK
 # DEFINES += -DALLREDUCE
 # DEFINES += -DIALLREDUCE
 # DEFINES += -DWITH_FAILURE

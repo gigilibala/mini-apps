@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 {
 	int rank, size;
 	int i, j, k;
-	double t1, t2, tf1, tf2;
+	double t1, t2, tf1 = 0.0, tf2 = 0.0;
 	int* franks;
 	int count;
 	int rc;
@@ -90,11 +90,12 @@ retry:
 #ifdef TRYBLOCK
 
 #  ifdef WITH_FAILURE
-	for(i=1; i<argc; i++)
-		if(rank == atoi(argv[i]))
-			*(int*)0 = 0;
-	
-	sleep(1);
+		for(i=1; i<argc; i++)
+			if(rank == atoi(argv[i]))
+				*(int*)0 = 0;
+
+		sleep(1);
+		tf1 = MPI_Wtime();
 #  endif  /* WITH_FAILURE */
 	
 		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tryreq);
@@ -107,8 +108,14 @@ retry:
 		MPI_Tryblock_finish(tryreq, 0, NULL);
 		MPI_Wait_local(&tryreq, &trystat, timeout);
 		MPI_Request_free(&tryreq);
+
+#  ifdef WITH_FAILURE
+		tf2 = MPI_Wtime();
+#  endif  /* WITH_FAILURE */
+		
 #endif	/* TRYBLOCK */
-	}		
+		
+	}	/* for */
 	t2 = MPI_Wtime();
 
 #ifdef WITH_FAILURE
@@ -123,15 +130,22 @@ retry:
 	MPI_Comm_rank(world, &rank);
 #endif // WITH_FAILURE
 	
+	int print_rank = 0;
+
 	double time = (t2-t1)/numiters;
 	double max_time;
-	int print_rank = 0;
 	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_SUM, print_rank, world);
+
+	double timef = tf2-tf1;
+	double max_timef;
+	MPI_Reduce(&timef, &max_timef, 1, MPI_DOUBLE, MPI_SUM, print_rank, world);
+
 //	MPI_Allreduce(&time, &max_time, 1, MPI_DOUBLE, MPI_SUM, world);
 	max_time /= size;			/* to get the average time not the maximum */
+	max_timef /= size;			/* to get the average time not the maximum */
 
 	if(rank == print_rank){
-		printf("%d %.2f\n", size, max_time*1000000);
+		printf("%d %.2f %.2f\n", size, max_time*1000000, max_timef*1000000);
 		
 	}
 	MPI_Finalize();
