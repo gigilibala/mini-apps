@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 /*
+#define TRYBLOCK      0
 #define ALLREDUCE     0
 #define IALLREDUCE    0
 #define WITH_FAILURE  0
@@ -17,7 +18,7 @@ int main(int argc, char** argv)
 {
 	int rank, size;
 	int i, j, k;
-	double t1, t2;
+	double t1, t2, tf1, tf2;
 	int* franks;
 	int count;
 	int rc;
@@ -46,6 +47,7 @@ int main(int argc, char** argv)
 	}
 
 	sleep(1);
+
 	MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tryreq);
 retry:
 	MPI_Tryblock_finish(tryreq, 0, NULL);
@@ -58,7 +60,7 @@ retry:
 		assert(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc);
 	}
 	MPI_Request_free(&tryreq);
-#endif
+#endif	/* WITH_FAILRUE */
 
 
 #ifdef WITH_FAULT
@@ -79,43 +81,56 @@ retry:
 		MPI_Request al_req;
 		MPI_Iallreduce(a, b, 2, MPI_INT, MPI_BAND, world, &al_req);
 		MPI_Wait(&al_req, MPI_STATUS_IGNORE);
-#elif defined(ALLREDUCE)
+#endif	/* IALLREDUCE */
+		
+#ifdef ALLREDUCE
 		MPI_Allreduce(a, b, 2, MPI_INT, MPI_BAND, world);
-#else
+#endif	/* ALLREDUCE */
+
+#ifdef TRYBLOCK
+
+#  ifdef WITH_FAILURE
+	for(i=1; i<argc; i++)
+		if(rank == atoi(argv[i]))
+			*(int*)0 = 0;
+	
+	sleep(1);
+#  endif  /* WITH_FAILURE */
+	
 		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tryreq);
-#ifdef WITH_FAULT
+
+#  ifdef WITH_FAULT
 		if(num_failed_div && !(rank % num_failed_div))
 			MPI_Request_raise_error(tryreq, rank+size);
-#endif
+#  endif	/* WITH_FAULT */
 		
 		MPI_Tryblock_finish(tryreq, 0, NULL);
 		MPI_Wait_local(&tryreq, &trystat, timeout);
 		MPI_Request_free(&tryreq);
-#endif
+#endif	/* TRYBLOCK */
 	}		
 	t2 = MPI_Wtime();
 
 #ifdef WITH_FAILURE
 	MPI_Comm newworld;
-//	if(rank == 0) printf("calling shrink\n");
+
 	MPI_Comm_ishrink(world, &newworld, &shrinkreq);
 	assert(MPI_SUCCESS == MPI_Wait(&shrinkreq, &shrinkstat));
-//	if(rank == 0) printf("called shrink\n");
+
 	MPI_Comm_free(&world);
 	world = newworld;
 	MPI_Comm_size(world, &size);
 	MPI_Comm_rank(world, &rank);
-//	if(rank == 0) printf("shrinked properly\n");
 #endif // WITH_FAILURE
 	
 	double time = (t2-t1)/numiters;
 	double max_time;
-//	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_SUM, 0, world);
-	MPI_Allreduce(&time, &max_time, 1, MPI_DOUBLE, MPI_SUM, world);
+	int print_rank = 0;
+	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_SUM, print_rank, world);
+//	MPI_Allreduce(&time, &max_time, 1, MPI_DOUBLE, MPI_SUM, world);
 	max_time /= size;			/* to get the average time not the maximum */
 
-	if(rank == 0){
-//		printf("avg time (seconds)\n");
+	if(rank == print_rank){
 		printf("%d %.2f\n", size, max_time*1000000);
 		
 	}
