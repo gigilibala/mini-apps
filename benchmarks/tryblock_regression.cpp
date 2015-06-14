@@ -22,8 +22,14 @@ int main(int argc, char** argv)
 	int* franks;
 	int count;
 	int rc;
-	int numiters = 1000;
-	int numskip  = 100;
+	int numiters = 10000;
+	int numskip  = 1000;
+#ifdef WITH_FAILURE
+	int numfailedskip = 1000;
+#else
+	int numfailedskip = 0;
+#endif	/* WITH_FAILURE */
+	int iamdead = false;
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm world = MPI_COMM_WORLD;
@@ -38,28 +44,36 @@ int main(int argc, char** argv)
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, 1.0);
 
+	if(0 == rank){
+#ifdef TRYBLOCK
+		printf("TRYBLOCK ");
+#endif	/* TRYBLOCK */
+		
+#ifdef ALLREDUCE
+		printf("ALLREDUCE ");
+#endif	/* ALLREDUCE */
+
+#ifdef IALLREDUCE
+		printf("IALLREDUCE ");
+#endif	/* IALLREDUCE */
+
+#ifdef WITH_FAILURE
+		printf("WITH_FAILURE ");
+#endif	/* WITH_FAILURE */
+		
+#ifdef WITH_FAULT
+		printf("WITH_FAULT ");
+#endif	/* WITH_FAULT */
+		printf("\n");
+	}
+
 
 #ifdef WITH_FAILURE
 	for(i=1; i<argc; i++){
 		if(rank == atoi(argv[i])){
-			*(int*)0 = 0;
+			iamdead = true;
 		}
 	}
-
-	sleep(1);
-
-	MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tryreq);
-retry:
-	MPI_Tryblock_finish(tryreq, 0, NULL);
-	rc = MPI_Wait_local(&tryreq, &trystat, timeout);
-	if(MPI_SUCCESS != rc){
-		if(MPI_ERR_TIMEOUT == rc){
-			goto retry;
-			
-		}
-		assert(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc);
-	}
-	MPI_Request_free(&tryreq);
 #endif	/* WITH_FAILRUE */
 
 
@@ -71,10 +85,11 @@ retry:
 	
 //	if(rank == 0) printf("barrier done\n");
 	
-	for(i=0; i<numiters+numskip; i++){
-		if(i == numskip)
+	for(i=0; i<numiters+numskip+numfailedskip; i++){
+
+		if(i == numskip + numfailedskip)
 			t1 = MPI_Wtime();
-//		printf("iter %d\n", i);
+
 
 		int a[2], b[2];
 #ifdef IALLREDUCE
@@ -90,12 +105,12 @@ retry:
 #ifdef TRYBLOCK
 
 #  ifdef WITH_FAILURE
-		for(i=1; i<argc; i++)
-			if(rank == atoi(argv[i]))
+		if(i == numskip){
+			if(iamdead)
 				*(int*)0 = 0;
-
-		sleep(1);
-		tf1 = MPI_Wtime();
+			sleep(3);
+			tf1 = MPI_Wtime();
+		}
 #  endif  /* WITH_FAILURE */
 	
 		MPI_Tryblock_start(world, MPI_TRYBLOCK_GLOBAL, &tryreq);
@@ -110,7 +125,9 @@ retry:
 		MPI_Request_free(&tryreq);
 
 #  ifdef WITH_FAILURE
-		tf2 = MPI_Wtime();
+		if(i == numskip){
+			tf2 = MPI_Wtime();
+		}
 #  endif  /* WITH_FAILURE */
 		
 #endif	/* TRYBLOCK */
