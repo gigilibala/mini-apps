@@ -1,7 +1,7 @@
 # COPYRIGHT @ Amin Hassani 2015
 
-PROJECTS = stencil/1d mantevo/minife-2.0/src benchmarks
-LIBRARIES= ftlib
+PROJECTS = stencil/1d mantevo/minife-2.0/src benchmarks 
+LIBRARIES= ftlib comm-pat
 
 TARGETS  = $(LIBRARIES) $(PROJECTS)
 # TARGETS  = $(filter-out ./, $(dir $(shell find . -name 'Makefile' -print)))
