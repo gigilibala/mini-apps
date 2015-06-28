@@ -15,10 +15,9 @@ char filename[256];
 
 int MPI_Init(int *argc, char ***argv){
 	int rc = PMPI_Init(argc, argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-	sprintf(filename, "%d.txt", myrank);
+	PMPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+	sprintf(filename, "%s-%d.txt", (*argv)[0], myrank);
 	pfile.open(filename);
-
 	printstr();
 	return rc;
 }
@@ -29,7 +28,6 @@ int MPI_Finalize(void){
 	return PMPI_Finalize();
 }
 int MPI_Initialized(int *flag){
-	printstr();
 	return PMPI_Initialized(flag);
 }
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided){
