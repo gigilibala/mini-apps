@@ -2,14 +2,11 @@
 CXX=mpicxx
 CC=mpicc
 
-#OBJS=$(patsubst %.cpp,%.o,$(SOURCES))
-OBJS= main.o
-
 CFLAGS   = -O2 -ggdb
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. -I../ftlib/
-LDFLAGS  = 
-FTLIB    = -L../ftlib
+LDFLAGS  = -L../comm-pat
+FTLIB    = -lprofiling
 LIBS     = $(FTLIB)
 
 DEFINES =
@@ -21,7 +18,7 @@ DEFINES += -DTRYBLOCK
 
 USRPATH := $(shell echo $(USRPATH))
 
-SOURCES=tryblock_regression.c
+SOURCES=tryblock_regression.c ptp.c
 
 TARGETS=$(patsubst %.c,%.x,$(SOURCES))
 
