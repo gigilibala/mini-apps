@@ -29,6 +29,9 @@ $(TARGET): $(OBJS)
 install: all
 	cp $(TARGET) $(USRPATH)/bin
 
+uninstall:
+	rm $(USRPATH)/bin/$(TARGET) 
+
 clean: 
 	rm $(TARGET) *.o
 

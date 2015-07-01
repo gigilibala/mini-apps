@@ -42,6 +42,9 @@ install: all
 #	ln -sf $(LIBDIR)/$(TARGET).so.1.0 $(LIBDIR)/$(TARGET).so.1
 #	ln -sf $(LIBDIR)/$(TARGET).so.1   $(LIBDIR)/$(TARGET).so
 
+uninstall:
+	rm $(LIBDIR)/$(TARGET).a $(LIBDIR)/$(TARGET).so 
+
 clean: 
 	rm $(TARGET).a $(TARGET).so *.o 
 

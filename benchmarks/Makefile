@@ -33,6 +33,9 @@ all: $(TARGETS)
 install: all
 	cp $(TARGETS) $(USRPATH)/bin
 
+uninstall:
+	rm $(USRPATH)/bin/$(TARGETS)
+
 clean: 
 	rm $(TARGETS)
 

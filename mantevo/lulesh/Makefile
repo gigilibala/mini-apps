@@ -55,6 +55,9 @@ lulesh2.0: $(OBJECTS2.0)
 install: all
 	cp $(LULESH_EXEC) $(USRPATH)/bin
 
+uninstall:
+	rm $(USRPATH)/bin/$(LULESH_EXEC)
+
 clean:
 	/bin/rm -f *.o *~ $(OBJECTS) $(LULESH_EXEC)
 	/bin/rm -rf *.dSYM

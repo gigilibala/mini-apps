@@ -37,6 +37,9 @@ $(TARGET).so: $(OBJS)
 install: all
 	cp $(TARGET).a $(TARGET).so $(LIBDIR)
 
+uninstall:
+	rm $(LIBDIR)/$(TARGET).a $(LIBDIR)/$(TARGET).so 
+
 clean: 
 	rm $(TARGET).a $(TARGET).so *.o 
 

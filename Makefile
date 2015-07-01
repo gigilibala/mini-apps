@@ -8,6 +8,7 @@ TARGETS  = $(LIBRARIES) $(PROJECTS)
 
 BUILDDIRS = $(TARGETS:%=build-%)
 INSTALLDIRS = $(TARGETS:%=install-%)
+UNINSTALLDIRS = $(TARGETS:%=uninstall-%)
 CLEANDIRS = $(TARGETS:%=clean-%)
 
 all: $(BUILDDIRS)
@@ -18,6 +19,10 @@ $(BUILDDIRS):
 install: $(INSTALLDIRS)
 $(INSTALLDIRS): 
 	$(MAKE) -C $(@:install-%=%) install
+
+uninstall: $(UNINSTALLDIRS)
+$(UNINSTALLDIRS): 
+	$(MAKE) -C $(@:uninstall-%=%) uninstall
 
 clean: $(CLEANDIRS)
 $(CLEANDIRS):
