@@ -52,6 +52,9 @@ lulesh2.0: $(OBJECTS2.0)
 	@echo "Linking"
 	$(CXX) $(OBJECTS2.0) $(LDFLAGS) -lm -o $@
 
+install: all
+	cp $(LULESH_EXEC) $(USRPATH)/bin
+
 clean:
 	/bin/rm -f *.o *~ $(OBJECTS) $(LULESH_EXEC)
 	/bin/rm -rf *.dSYM

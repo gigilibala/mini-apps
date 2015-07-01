@@ -1,6 +1,6 @@
 # COPYRIGHT @ Amin Hassani 2015
 
-PROJECTS = stencil/1d mantevo/minife-2.0/src benchmarks 
+PROJECTS = stencil/1d benchmarks mantevo/minife-2.0/src mantevo/lulesh
 LIBRARIES= ftlib comm-pat
 
 TARGETS  = $(LIBRARIES) $(PROJECTS)
