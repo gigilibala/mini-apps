@@ -154,6 +154,7 @@ Additional BSD Notice
 #include <time.h>
 #include <sys/time.h>
 #include <iostream>
+#include <fstream>
 #include <unistd.h>
 
 #if _OPENMP
@@ -161,8 +162,6 @@ Additional BSD Notice
 #endif
 
 #include "lulesh.h"
-
-
 /*********************************/
 /* Data structure implementation */
 /*********************************/
@@ -2770,6 +2769,7 @@ int main(int argc, char *argv[])
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
 
+	   trace();
       TimeIncrement(*locDom) ;
       LagrangeLeapFrog(*locDom) ;
 

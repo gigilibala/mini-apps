@@ -614,3 +614,15 @@ void CommMonoQ(Domain& domain);
 // lulesh-init
 void InitMeshDecomp(Int_t numRanks, Int_t myRank,
                     Int_t *col, Int_t *row, Int_t *plane, Int_t *side);
+
+#include <iostream>
+#include <fstream>
+#ifdef PROFILING
+extern std::ofstream pfile;
+#define trace()									\
+	do {										\
+		pfile << __func__ << std::endl;			\
+	} while(0)
+#else
+#define trace() 				// nothing
+#endif
