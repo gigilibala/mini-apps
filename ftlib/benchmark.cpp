@@ -1,21 +1,20 @@
 #include "benchmark.hpp"
 
-Benchmark::Benchmark(){
-
-}
-Benchmark::~Benchmark(){
-
-}
-
-void Benchmark::add_sample(double sample){
-	samples.push_back(sample);
+int Benchmark::add_entry(const char* name) {
+	Entry* entry = new Entry(name);
+	entries.push_back(entry);
+	return entries.size()-1;
 }
 
-double Benchmark::get_low_mean_percentile(int percentile){
+void Benchmark::add_sample(int entry_id, double sample) {
+	entries[entry_id]->samples += sample;
+	entries[entry_id]->count ++;
+}
 
-	double mean = 0.0;
+double Benchmark::get_sum(int entry_id) {
+	return entries[entry_id]->samples;
+}
 
-	
-
-	return mean;
+double Benchmark::get_mean(int entry_id) {
+	return (get_sum(entry_id) / entries[entry_id]->count);
 }
