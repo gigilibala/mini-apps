@@ -77,6 +77,9 @@ public:
 	
 	void add_requests(int count, MPI_Request* reqs);
 
+	TryBlockManager() { };
+	~TryBlockManager() { };
+
 private:
 	std::vector<TryBlock*> tryblocks;
 };
