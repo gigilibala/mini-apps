@@ -117,3 +117,61 @@ retry_tb:
 	
 	return exit_code;
 }
+
+/* TryBlock */
+void TryBlockManager::push() {
+	tryblocks.push_back(NULL);
+}
+
+MPI_Request TryBlockManager::pop() {
+	TryBlock* tb = tryblocks.back();
+	tryblocks.pop_back();
+	if (NULL != tb) {
+		return tb->tryblock_request;
+	}
+}
+
+int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
+	if (tryblocks.size() < 1) {
+	std:cout << __func__ << ": you should push first." << std::endl;
+	}
+	
+	TryBlock* tb = 	tryblocks.back();
+	if (NULL != tb)
+		free(tb);
+
+	tryblocks.back() = new TryBlock(comm);
+
+	return MPI_Tryblock_start(comm, flag,
+								&tryblocks.back()->tryblock_request);
+}
+
+int TryBlockManager::tryblock_finish(double reqs_timeout) {
+	MPI_Timeout timeout;
+	MPI_Timeout_set_seconds(&timeout, reqs_timeout);
+	TryBlock* tb = tryblocks.back();
+	return MPI_Tryblock_finish_local(tb->tryblock_request,
+									 tb->requests.size(),
+									 tb->requests.data(),
+									 timeout);
+}
+
+int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
+	MPI_Timeout timeout;
+	MPI_Timeout_set_seconds(&timeout, tb_timeout);
+	return MPI_Wait_local(
+		&tryblocks.back()->tryblock_request, MPI_STATUS_IGNORE, timeout);
+}
+
+void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
+	tryblocks.back()->requests.reserve(
+		tryblocks.back()->requests.size() + count);
+
+	for (int i=0; i<count; i++) {
+		tryblocks.back()->requests.push_back(reqs[i]);
+	}
+}
+
+
+
+
