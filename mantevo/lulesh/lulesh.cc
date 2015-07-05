@@ -2767,11 +2767,20 @@ int main(int argc, char *argv[])
 //debug to see region sizes
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
+
+   /* Start the tryblock */
+
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
 
 	   trace();
+
       TimeIncrement(*locDom) ;
+
+	  /* Finish the tryblock */
+
       LagrangeLeapFrog(*locDom) ;
+
+	  /* Start the tryblock */
 
       if ((opts.showProg != 0) && (opts.quiet == 0) && (myRank == 0)) {
          printf("cycle = %d, time = %e, dt=%e\n",
@@ -2779,6 +2788,8 @@ int main(int argc, char *argv[])
       }
    }
 
+   /* Finish the tryblock */
+   
    // Use reduced max elapsed time
    double elapsed_time;
 #if USE_MPI   
@@ -2811,3 +2822,7 @@ int main(int argc, char *argv[])
 
    return 0 ;
 }
+
+#ifdef FAMPI
+TryBlockManager g_tb_manager;
+#endif

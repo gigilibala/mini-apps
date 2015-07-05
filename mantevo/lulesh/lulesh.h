@@ -626,3 +626,10 @@ extern std::ofstream pfile;
 #else
 #define trace() 				// nothing
 #endif
+
+
+#ifdef FAMPI
+#include "../../ftlib/benchmark.hpp"
+#include "../../ftlib/ftlib.hpp"
+extern TryBlockManager g_tb_manager;
+#endif
