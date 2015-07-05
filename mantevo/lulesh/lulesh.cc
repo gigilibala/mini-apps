@@ -2768,19 +2768,29 @@ int main(int argc, char *argv[])
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
 
-   /* Start the tryblock */
+#if FAMPI
+   /* Change the world communicator */
+   MPI_Comm_dup(MPI_COMM_WORLD, &world);
 
+   g_tb_manager.push();
+   /* Start the tryblock */
+   g_tb_manager.tryblock_start(world, MPI_TRYBLOCK_GLOBAL);
+#endif
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
 
 	   trace();
 
       TimeIncrement(*locDom) ;
 
+#if FAMPI
 	  /* Finish the tryblock */
+#endif
 
       LagrangeLeapFrog(*locDom) ;
 
+#if FAMPI
 	  /* Start the tryblock */
+#endif
 
       if ((opts.showProg != 0) && (opts.quiet == 0) && (myRank == 0)) {
          printf("cycle = %d, time = %e, dt=%e\n",
@@ -2788,7 +2798,12 @@ int main(int argc, char *argv[])
       }
    }
 
+#if FAMPI
    /* Finish the tryblock */
+   g_tb_manager.tryblock_finish(1.0);
+   g_tb_manager.wait_for_tryblock_finish(1.0);
+   MPI_Request tb_req = g_tb_manager.pop();
+#endif
    
    // Use reduced max elapsed time
    double elapsed_time;
@@ -2825,4 +2840,5 @@ int main(int argc, char *argv[])
 
 #ifdef FAMPI
 TryBlockManager g_tb_manager;
+MPI_Comm world;
 #endif
