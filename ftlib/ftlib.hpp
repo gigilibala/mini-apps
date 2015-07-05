@@ -6,8 +6,8 @@
  *
  * Author: Amin Hassani (ahassani@cis.uab.edu)
  *******************************************************************************
+ * 
  * FT library to work with tryblocks
- *
  */
 
 #include <vector>
