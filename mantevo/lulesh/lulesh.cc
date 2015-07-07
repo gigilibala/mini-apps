@@ -2740,6 +2740,12 @@ int main(int argc, char *argv[])
    locDom = new Domain(numRanks, col, row, plane, opts.nx,
                        side, opts.numReg, opts.balance, opts.cost) ;
 
+#if FAMPI
+   /* Change the world communicator */
+   MPI_Comm_dup(MPI_COMM_WORLD, &world);
+#else
+   world = MPI_COMM_WORLD;
+#endif
 
 #if USE_MPI   
    fieldData = &Domain::nodalMass ;
@@ -2769,13 +2775,11 @@ int main(int argc, char *argv[])
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
 
 #if FAMPI
-   /* Change the world communicator */
-   MPI_Comm_dup(MPI_COMM_WORLD, &world);
-
    g_tb_manager.push();
    /* Start the tryblock */
    g_tb_manager.tryblock_start(world, MPI_TRYBLOCK_GLOBAL);
 #endif
+
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
 
 	   trace();
@@ -2840,5 +2844,5 @@ int main(int argc, char *argv[])
 
 #ifdef FAMPI
 TryBlockManager g_tb_manager;
-MPI_Comm world;
 #endif
+MPI_Comm world;

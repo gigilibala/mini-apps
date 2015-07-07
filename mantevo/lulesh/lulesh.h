@@ -633,5 +633,5 @@ extern std::ofstream pfile;
 #include "../../ftlib/ftlib.hpp"
 #include <mpi-ext.h>
 extern TryBlockManager g_tb_manager;
-extern MPI_Comm world;
 #endif
+extern MPI_Comm world;
