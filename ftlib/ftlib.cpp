@@ -126,9 +126,10 @@ void TryBlockManager::push() {
 MPI_Request TryBlockManager::pop() {
 	TryBlock* tb = tryblocks.back();
 	tryblocks.pop_back();
-	if (NULL != tb) {
-		return tb->tryblock_request;
+	if (NULL == tb) {
+		return NULL;
 	}
+	return tb->tryblock_request;
 }
 
 int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
