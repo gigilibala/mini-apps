@@ -24,10 +24,10 @@ OBJECTS2.0 = $(SOURCES2.0:.cc=.o)
 CXXFLAGS = -g -O3 -fopenmp -I. -Wall
 LDFLAGS = -g -O3 -fopenmp
 
-# CXXFLAGS += -DPROFILING
+# CXXFLAGS += -DPROFILING -I../../
 # LDFLAGS += -L../../comm-pat -lprofiling
 
-CXXFLAGS += -DFAMPI
+CXXFLAGS += -DFAMPI -I../../
 LDFLAGS += -L../../ftlib -lfa_mpi
 
 #Below are reasonable default flags for a serial build

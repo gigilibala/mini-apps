@@ -629,8 +629,8 @@ extern std::ofstream pfile;
 
 
 #ifdef FAMPI
-#include "../../ftlib/benchmark.hpp"
-#include "../../ftlib/ftlib.hpp"
+#include <ftlib/benchmark.hpp>
+#include <ftlib/ftlib.hpp>
 #include <mpi-ext.h>
 extern TryBlockManager g_tb_manager;
 #endif
