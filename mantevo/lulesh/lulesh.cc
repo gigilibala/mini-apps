@@ -2796,6 +2796,7 @@ int main(int argc, char *argv[])
       LagrangeLeapFrog(*locDom) ;
 
 #if FAMPI
+	  g_tb_manager.push();
 	  /* Start the tryblock */
 	  g_tb_manager.tryblock_start(world, MPI_TRYBLOCK_GLOBAL);
 #endif
