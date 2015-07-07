@@ -2786,14 +2786,18 @@ int main(int argc, char *argv[])
 
       TimeIncrement(*locDom) ;
 
-#if FAMPI
+#if FAMPI	  
 	  /* Finish the tryblock */
+	  g_tb_manager.tryblock_finish(1.0);
+	  g_tb_manager.wait_for_tryblock_finish(1.0);
+	  MPI_Request tb_req = g_tb_manager.pop();
 #endif
 
       LagrangeLeapFrog(*locDom) ;
 
 #if FAMPI
 	  /* Start the tryblock */
+	  g_tb_manager.tryblock_start(world, MPI_TRYBLOCK_GLOBAL);
 #endif
 
       if ((opts.showProg != 0) && (opts.quiet == 0) && (myRank == 0)) {
