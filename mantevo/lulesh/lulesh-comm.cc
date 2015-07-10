@@ -5,6 +5,7 @@
 
 #include <mpi.h>
 #include <string.h>
+#include <assert.h>
 
 /* Comm Routines */
 
@@ -62,6 +63,11 @@ void CommRecv(Domain& domain, int msgType, Index_t xferFields,
 	trace();
    if (domain.numRanks() == 1)
       return ;
+
+#if FAMPI_2
+   g_tb_manager.push();
+   g_tb_manager.tryblock_start(world, TRYBLOCK_FLAG_2ND_LEVEL);
+#endif
 
    /* post recieve buffers for all incoming messages */
    int myRank ;
@@ -351,6 +357,9 @@ void CommRecv(Domain& domain, int msgType, Index_t xferFields,
          ++cmsg ;
       }
    }
+#ifdef FAMPI_2
+   g_tb_manager.add_requests(pmsg+emsg+cmsg, domain.recvRequest);
+#endif
 }
 
 /******************************************/
@@ -363,7 +372,7 @@ void CommSend(Domain& domain, int msgType,
 	trace();
    if (domain.numRanks() == 1)
       return ;
-
+   memset(domain.sendRequest, 0, sizeof(MPI_Request)*26);
    /* post recieve buffers for all incoming messages */
    int myRank ;
    Index_t maxPlaneComm = xferFields * domain.maxPlaneSize() ;
@@ -841,8 +850,24 @@ void CommSend(Domain& domain, int msgType,
          ++cmsg ;
       }
    }
+#ifdef FAMPI_2
+   int rc;
+   MPI_Timeout timeout;
+   MPI_Timeout_set_seconds(&timeout, 1.0);
+   g_tb_manager.add_requests(pmsg+emsg+cmsg, domain.sendRequest);
 
+   /* Finish the tryblock */
+   rc = g_tb_manager.tryblock_finish(1.0);
+   if(rc != MPI_SUCCESS) error_trace(rc);
+   
+   rc = g_tb_manager.wait_for_tryblock_finish(1.0);
+   if(rc != MPI_SUCCESS) error_trace(rc);
+
+   MPI_Request tb_req = g_tb_manager.pop();
+   g_tb_manager.add_requests(1, &tb_req);
+#else
    MPI_Waitall(26, domain.sendRequest, status) ;
+#endif	/* FAMPI_2 */
 }
 
 /******************************************/

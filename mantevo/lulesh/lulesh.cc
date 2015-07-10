@@ -156,6 +156,7 @@ Additional BSD Notice
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
+#include <assert.h>
 
 #if _OPENMP
 # include <omp.h>
@@ -210,9 +211,20 @@ void TimeIncrement(Domain& domain)
       }
 
 #if USE_MPI      
+#ifdef FAMPI
+	  MPI_Request ar_req;
+      MPI_Iallreduce(&gnewdt, &newdt, 1,
+					 ((sizeof(Real_t) == 4) ? MPI_FLOAT : MPI_DOUBLE),
+					 MPI_MIN, MPI_COMM_WORLD, &ar_req);
+	  MPI_Timeout timeout;
+	  MPI_Timeout_set_seconds(&timeout, 1.0);
+	  MPI_Wait_local(&ar_req, MPI_STATUS_IGNORE, timeout);
+	  g_tb_manager.add_requests(1, &ar_req);
+#else
       MPI_Allreduce(&gnewdt, &newdt, 1,
                     ((sizeof(Real_t) == 4) ? MPI_FLOAT : MPI_DOUBLE),
                     MPI_MIN, MPI_COMM_WORLD) ;
+#endif
 #else
       newdt = gnewdt;
 #endif
@@ -2687,7 +2699,8 @@ void LagrangeLeapFrog(Domain& domain)
 
 int main(int argc, char *argv[])
 {
-  Domain *locDom ;
+   int rc;
+   Domain *locDom ;
    Int_t numRanks ;
    Int_t myRank ;
    struct cmdLineOpts opts;
@@ -2748,6 +2761,13 @@ int main(int argc, char *argv[])
 #endif
 
 #if USE_MPI   
+
+#if FAMPI
+   g_tb_manager.push();
+   /* Start the tryblock */
+   g_tb_manager.tryblock_start(world, TRYBLOCK_FLAG_1TH_LEVEL);
+#endif
+
    fieldData = &Domain::nodalMass ;
 
    // Initial domain boundary communication 
@@ -2760,7 +2780,7 @@ int main(int argc, char *argv[])
    CommSBN(*locDom, 1, &fieldData) ;
 
    // End initialization
-   MPI_Barrier(MPI_COMM_WORLD);
+//   MPI_Barrier(MPI_COMM_WORLD);
 #endif   
    
    // BEGIN timestep to solution */
@@ -2774,12 +2794,6 @@ int main(int argc, char *argv[])
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
 
-#if FAMPI
-   g_tb_manager.push();
-   /* Start the tryblock */
-   g_tb_manager.tryblock_start(world, MPI_TRYBLOCK_GLOBAL);
-#endif
-
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
 
 	   trace();
@@ -2788,18 +2802,22 @@ int main(int argc, char *argv[])
 
 #if FAMPI	  
 	  /* Finish the tryblock */
-	  g_tb_manager.tryblock_finish(1.0);
-	  g_tb_manager.wait_for_tryblock_finish(1.0);
+	  rc = g_tb_manager.tryblock_finish(1.0);
+	  if(rc != MPI_SUCCESS) error_trace(rc);
+
+	  rc = g_tb_manager.wait_for_tryblock_finish(1.0);
+	  if(rc != MPI_SUCCESS) error_trace(rc);
+
 	  MPI_Request tb_req = g_tb_manager.pop();
+
+	  /* Do recovery */
+
+	  g_tb_manager.push();
+	  /* Start the tryblock */
+	  g_tb_manager.tryblock_start(world, TRYBLOCK_FLAG_1TH_LEVEL);
 #endif
 
       LagrangeLeapFrog(*locDom) ;
-
-#if FAMPI
-	  g_tb_manager.push();
-	  /* Start the tryblock */
-	  g_tb_manager.tryblock_start(world, MPI_TRYBLOCK_GLOBAL);
-#endif
 
       if ((opts.showProg != 0) && (opts.quiet == 0) && (myRank == 0)) {
          printf("cycle = %d, time = %e, dt=%e\n",
@@ -2809,8 +2827,11 @@ int main(int argc, char *argv[])
 
 #if FAMPI
    /* Finish the tryblock */
-   g_tb_manager.tryblock_finish(1.0);
-   g_tb_manager.wait_for_tryblock_finish(1.0);
+   rc = g_tb_manager.tryblock_finish(1.0);
+   if(rc != MPI_SUCCESS) error_trace(rc);
+
+   rc = g_tb_manager.wait_for_tryblock_finish(1.0);
+   if(rc != MPI_SUCCESS) error_trace(rc);
    MPI_Request tb_req = g_tb_manager.pop();
 #endif
    

@@ -27,7 +27,7 @@ LDFLAGS = -g -O3 -fopenmp
 # CXXFLAGS += -DPROFILING -I../../
 # LDFLAGS += -L../../comm-pat -lprofiling
 
-CXXFLAGS += -DFAMPI -I../../
+CXXFLAGS += -I../../ -DFAMPI -DFAMPI_2
 LDFLAGS += -L../../ftlib -lfa_mpi
 
 #Below are reasonable default flags for a serial build

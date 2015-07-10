@@ -628,10 +628,20 @@ extern std::ofstream pfile;
 #endif
 
 
+extern MPI_Comm world;
 #ifdef FAMPI
 #include <ftlib/benchmark.hpp>
 #include <ftlib/ftlib.hpp>
 #include <mpi-ext.h>
 extern TryBlockManager g_tb_manager;
-#endif
-extern MPI_Comm world;
+#define TRYBLOCK_FLAG_1TH_LEVEL MPI_TRYBLOCK_GLOBAL
+#define TRYBLOCK_FLAG_2ND_LEVEL MPI_TRYBLOCK_LOCAL
+#define error_trace(rc)											\
+	do {														\
+		char str[256];											\
+		int  str_len; MPI_Error_string(rc, str, &str_len);		\
+		int  rank; MPI_Comm_rank(world, &rank);					\
+		std::cout << rank << ":" << __func__ << ":" << __LINE__	\
+				  << ":" << str << std::endl;					\
+	} while(0)
+#endif	/* FAMPI */
