@@ -77,6 +77,8 @@ public:
 	
 	void add_requests(int count, MPI_Request* reqs);
 
+	void get_requests(int* count, MPI_Request** reqs);
+
 	TryBlockManager() { };
 	~TryBlockManager() { };
 

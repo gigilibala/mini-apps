@@ -127,6 +127,7 @@ MPI_Request TryBlockManager::pop() {
 	TryBlock* tb = tryblocks.back();
 	tryblocks.pop_back();
 	if (NULL == tb) {
+		std::cout << "Tryblock is null" << std::endl;
 		return NULL;
 	}
 	return tb->tryblock_request;
@@ -134,7 +135,7 @@ MPI_Request TryBlockManager::pop() {
 
 int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
 	if (tryblocks.size() < 1) {
-	std:cout << __func__ << ": you should push first." << std::endl;
+    	std:cout << __func__ << ": you should push first." << std::endl;
 	}
 	
 	TryBlock* tb = 	tryblocks.back();
@@ -173,6 +174,7 @@ void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
 	}
 }
 
-
-
-
+void TryBlockManager::get_requests(int* count, MPI_Request** reqs) {
+	*count = tryblocks.back()->requests.size();
+	*reqs = tryblocks.back()->requests.data();
+}

@@ -10,8 +10,7 @@ SOURCES  = $(shell find . -name '*.cpp' -print)
 OBJS     = $(patsubst %.cpp,%.o,$(SOURCES))
 
 CFLAGS   = -O2 -fPIC
-#CFLAGS   = -O0 -ggdb -fPIC
-# -Wall -Werror
+#CFLAGS   = -O0 -ggdb -fPIC -Wall -Werror
 CPPFLAGS = $(CFLAGS) 
 CXXFLAGS = -I. 
 LDFLAGS  =
@@ -20,9 +19,7 @@ LIBS     =
 USRPATH := $(shell echo $(USRPATH))
 LIBDIR   = $(USRPATH)/lib
 
-# `echo $$USRPATH`/lib
-
-all: $(TARGET).a $(TARGET).so
+all: $(TARGET).so
 
 $(TARGET).a: $(OBJS)
 	$(AR) -cvq $@ $(OBJS)
@@ -37,15 +34,15 @@ $(TARGET).so: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $<
 
 install: all
-	cp $(TARGET).a $(TARGET).so $(LIBDIR)
+	cp $(TARGET).so $(LIBDIR)
 #	mv $(TARGET).so.1.0 $(LIBDIR)
 #	ln -sf $(LIBDIR)/$(TARGET).so.1.0 $(LIBDIR)/$(TARGET).so.1
 #	ln -sf $(LIBDIR)/$(TARGET).so.1   $(LIBDIR)/$(TARGET).so
 
 uninstall:
-	rm $(LIBDIR)/$(TARGET).a $(LIBDIR)/$(TARGET).so 
+	rm $(LIBDIR)/$(TARGET).so 
 
 clean: 
-	rm $(TARGET).a $(TARGET).so *.o 
+	rm $(TARGET).so *.o 
 
 .PHONY: all clean install
