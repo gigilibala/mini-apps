@@ -13,37 +13,35 @@
 #include <iostream>
 #include <list>
 #include <vector>
+#include <mpi.h>
+#include <stdio.h>
 
-class Entry {
+#ifndef FTLIB_BENCHMARK_HPP
+#define FTLIB_BENCHMARK_HPP
+
+/* Used for timing benchmarks */
+class BenchmarkEntry {
 public:
 	const char* name;
 	double samples;
 	int count;
 	double t1;
 //	std::list<double> samples;
+	char out_str[100];
+	BenchmarkEntry(const char* name) : name(name), samples(0.0) , count(0) { };
+	~BenchmarkEntry() { };
 
-	Entry(const char* name) : name(name), samples(0.0) , count(0) { };
-	~Entry() { };
-};
+	void   start_timing() { t1 = MPI_Wtime(); };
+	void   end_timing() { samples += MPI_Wtime() - t1; count ++; };
 
-/* Used for timing benchmarks */
-class Benchmark {
-
-private:
-	std::vector<Entry*> entries;
-
-public:
-	Benchmark() { };
-	~Benchmark() { };
-
-	/* Adds an entry for timing and returns the id to that entry. */
-	int    add_entry(const char* name);
-	void   add_sample(int entry_id, double sample);
-	void   start_timing(int entry_id);
-	void   end_timing(int entry_id);
-
-	double get_sum(int entry_id);
-	double get_mean(int entry_id);
+	double get_sum() { return samples; };
+	double get_mean() { return get_sum() / count; };
 	
+	char* to_string() {
+		sprintf(out_str, "%s: t(%lf) m(%lf)", name, get_sum(), get_mean());
+		return out_str;
+	};
 	double get_low_mean_percentile(int percentile);
 };
+
+#endif /* FTLIB_BENCHMARK_HPP */
