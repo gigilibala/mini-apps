@@ -627,10 +627,8 @@ extern std::ofstream pfile;
 #define trace() 				// nothing
 #endif
 
-
 extern MPI_Comm world;
 #ifdef FAMPI
-#include <ftlib/benchmark.hpp>
 #include <ftlib/ftlib.hpp>
 #include <mpi-ext.h>
 extern TryBlockManager g_tb_manager;
@@ -645,3 +643,9 @@ extern TryBlockManager g_tb_manager;
 				  << ":" << str << std::endl;					\
 	} while(0)
 #endif	/* FAMPI */
+
+#include <ftlib/benchmark.hpp>
+extern BenchmarkEntry be_init;
+extern BenchmarkEntry be_compute;
+extern BenchmarkEntry be_tryblock;
+extern BenchmarkEntry be_recovery;

@@ -21,13 +21,13 @@ SOURCES2.0 = \
 OBJECTS2.0 = $(SOURCES2.0:.cc=.o)
 
 #Default build suggestions with OpenMP for g++
-CXXFLAGS = -g -O3 -fopenmp -I. -Wall
+CXXFLAGS = -g -O3 -fopenmp -I. -I../../ -Wall
 LDFLAGS = -g -O3 -fopenmp
 
 # CXXFLAGS += -DPROFILING -I../../
 # LDFLAGS += -L../../comm-pat -lprofiling
 
-CXXFLAGS += -I../../ -DFAMPI -DFAMPI_2
+CXXFLAGS += -DFAMPI -DFAMPI_2
 LDFLAGS += -L../../ftlib -lfa_mpi
 
 #Below are reasonable default flags for a serial build

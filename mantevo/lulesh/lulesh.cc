@@ -2696,6 +2696,10 @@ void LagrangeLeapFrog(Domain& domain)
 
 
 /******************************************/
+BenchmarkEntry be_init("Init");
+BenchmarkEntry be_compute("Compute");
+BenchmarkEntry be_tryblock("TryBlock");
+BenchmarkEntry be_recovery("Recovery");
 
 int main(int argc, char *argv[])
 {
@@ -2704,7 +2708,8 @@ int main(int argc, char *argv[])
    Int_t numRanks ;
    Int_t myRank ;
    struct cmdLineOpts opts;
-
+   
+   be_init.start_timing();
 #if USE_MPI   
    Domain_member fieldData ;
 
@@ -2794,6 +2799,7 @@ int main(int argc, char *argv[])
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
 
+   be_init.end_timing();
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
 
 	   trace();
@@ -2802,19 +2808,18 @@ int main(int argc, char *argv[])
 
 #if FAMPI	  
 	  /* Finish the tryblock */
+	  be_tryblock.start_timing();
 	  rc = g_tb_manager.tryblock_finish(1.0);
 	  if(rc != MPI_SUCCESS) error_trace(rc);
 
 	  rc = g_tb_manager.wait_for_tryblock_finish(1.0);
 	  if(rc != MPI_SUCCESS) error_trace(rc);
-
 	  MPI_Request tb_req = g_tb_manager.pop();
-
-	  /* Do recovery */
 
 	  g_tb_manager.push();
 	  /* Start the tryblock */
 	  g_tb_manager.tryblock_start(world, TRYBLOCK_FLAG_1TH_LEVEL);
+	  be_tryblock.end_timing();
 #endif
 
       LagrangeLeapFrog(*locDom) ;
@@ -2827,12 +2832,14 @@ int main(int argc, char *argv[])
 
 #if FAMPI
    /* Finish the tryblock */
+   be_tryblock.start_timing();
    rc = g_tb_manager.tryblock_finish(1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
 
    rc = g_tb_manager.wait_for_tryblock_finish(1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
    MPI_Request tb_req = g_tb_manager.pop();
+   be_tryblock.end_timing();
 #endif
    
    // Use reduced max elapsed time
@@ -2864,7 +2871,11 @@ int main(int argc, char *argv[])
 #if USE_MPI
    MPI_Finalize() ;
 #endif
-
+   if (myRank == 0) {
+	   std::cout << be_init.to_string() << " "
+				 << be_tryblock.to_string() << " "
+				 << std::endl;
+   }
    return 0 ;
 }
 
