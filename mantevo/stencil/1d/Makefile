@@ -8,9 +8,9 @@ OBJS= main.o
 
 CFLAGS   = -O0 -ggdb
 CPPFLAGS = $(CFLAGS) 
-CXXFLAGS = -I. -I../../ftlib/
+CXXFLAGS = -I. -I../../../ftlib/
 LDFLAGS  = 
-FTLIB    = -L../../ftlib -lfa_mpi
+FTLIB    = -L../../../ftlib -lfa_mpi
 LIBS     = $(FTLIB)
 
 USRPATH := $(shell echo $(USRPATH))
