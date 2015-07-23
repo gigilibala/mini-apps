@@ -79,6 +79,8 @@ public:
 
 	void get_requests(int* count, MPI_Request** reqs);
 
+	void repair_comm(MPI_Comm world, MPI_Comm* out_world);
+
 	TryBlockManager() { };
 	~TryBlockManager() { };
 

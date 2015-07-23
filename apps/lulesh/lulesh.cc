@@ -2759,8 +2759,10 @@ int main(int argc, char *argv[])
                        side, opts.numReg, opts.balance, opts.cost) ;
 
 #if FAMPI
+   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);   
    /* Change the world communicator */
    MPI_Comm_dup(MPI_COMM_WORLD, &world);
+//   MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);   
 #else
    world = MPI_COMM_WORLD;
 #endif
@@ -2807,13 +2809,21 @@ int main(int argc, char *argv[])
       TimeIncrement(*locDom) ;
 
 #if FAMPI	  
+
+	  if(locDom->cycle() == 10 && myRank == 1) *(int*)0 = 0;
+
 	  /* Finish the tryblock */
 	  be_tryblock.start_timing();
 	  rc = g_tb_manager.tryblock_finish(1.0);
 	  if(rc != MPI_SUCCESS) error_trace(rc);
-
 	  rc = g_tb_manager.wait_for_tryblock_finish(1.0);
-	  if(rc != MPI_SUCCESS) error_trace(rc);
+	  if(rc != MPI_SUCCESS) {
+		  error_trace(rc);
+		  MPI_Comm world2;
+		  /* Shrink and replace the world */
+		  g_tb_manager.repair_comm(world, &world2);
+		  world = world2;
+	  }
 	  MPI_Request tb_req = g_tb_manager.pop();
 
 	  g_tb_manager.push();

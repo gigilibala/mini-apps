@@ -38,7 +38,7 @@ public:
 	double get_mean() { return get_sum() / count; };
 	
 	char* to_string() {
-		sprintf(out_str, "%s: t(%lf) m(%lf)", name, get_sum(), get_mean());
+		sprintf(out_str, "%s: t(%lf) m(%lf)\n", name, get_sum(), get_mean());
 		return out_str;
 	};
 	double get_low_mean_percentile(int percentile);

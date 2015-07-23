@@ -151,11 +151,14 @@ int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
 int TryBlockManager::tryblock_finish(double reqs_timeout) {
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, reqs_timeout);
+
 	TryBlock* tb = tryblocks.back();
+
 	return MPI_Tryblock_finish_local(tb->tryblock_request,
 									 tb->requests.size(),
 									 tb->requests.data(),
 									 timeout);
+
 }
 
 int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
@@ -177,4 +180,16 @@ void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
 void TryBlockManager::get_requests(int* count, MPI_Request** reqs) {
 	*count = tryblocks.back()->requests.size();
 	*reqs = tryblocks.back()->requests.data();
+}
+
+void TryBlockManager::repair_comm(MPI_Comm world, MPI_Comm* out_world) {
+	TryBlock* tb = tryblocks.back();
+/*
+	int rc = MPI_Wait_local(&tb->tryblock_request, MPI_STATUS_IGNORE,
+							MPI_TIMEOUT_ZERO);
+
+	if (MPI_SUCCESS != rc) {
+		std::cout << "failed" << std::endl;
+	}
+*/
 }
