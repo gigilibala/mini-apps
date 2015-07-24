@@ -215,7 +215,7 @@ void TimeIncrement(Domain& domain)
 	  MPI_Request ar_req;
       MPI_Iallreduce(&gnewdt, &newdt, 1,
 					 ((sizeof(Real_t) == 4) ? MPI_FLOAT : MPI_DOUBLE),
-					 MPI_MIN, MPI_COMM_WORLD, &ar_req);
+					 MPI_MIN, world, &ar_req);
 	  MPI_Timeout timeout;
 	  MPI_Timeout_set_seconds(&timeout, 1.0);
 	  MPI_Wait_local(&ar_req, MPI_STATUS_IGNORE, timeout);
@@ -223,7 +223,7 @@ void TimeIncrement(Domain& domain)
 #else
       MPI_Allreduce(&gnewdt, &newdt, 1,
                     ((sizeof(Real_t) == 4) ? MPI_FLOAT : MPI_DOUBLE),
-                    MPI_MIN, MPI_COMM_WORLD) ;
+                    MPI_MIN, world) ;
 #endif
 #else
       newdt = gnewdt;
@@ -1072,7 +1072,7 @@ void CalcHourglassControlForElems(Domain& domain,
       /* Do a check for negative volumes */
       if ( domain.v(i) <= Real_t(0.0) ) {
 #if USE_MPI         
-         MPI_Abort(MPI_COMM_WORLD, VolumeError) ;
+         MPI_Abort(world, VolumeError) ;
 #else
          exit(VolumeError);
 #endif
@@ -1122,7 +1122,7 @@ void CalcVolumeForceForElems(Domain& domain)
       for ( Index_t k=0 ; k<numElem ; ++k ) {
          if (determ[k] <= Real_t(0.0)) {
 #if USE_MPI            
-            MPI_Abort(MPI_COMM_WORLD, VolumeError) ;
+            MPI_Abort(world, VolumeError) ;
 #else
             exit(VolumeError);
 #endif
@@ -1637,7 +1637,7 @@ void CalcLagrangeElements(Domain& domain, Real_t* vnew)
          if (vnew[k] <= Real_t(0.0))
         {
 #if USE_MPI           
-           MPI_Abort(MPI_COMM_WORLD, VolumeError) ;
+           MPI_Abort(world, VolumeError) ;
 #else
            exit(VolumeError);
 #endif
@@ -2041,7 +2041,7 @@ void CalcQForElems(Domain& domain, Real_t vnew[])
 
       if(idx >= 0) {
 #if USE_MPI         
-         MPI_Abort(MPI_COMM_WORLD, QStopError) ;
+         MPI_Abort(world, QStopError) ;
 #else
          exit(QStopError);
 #endif
@@ -2410,7 +2410,7 @@ void ApplyMaterialPropertiesForElems(Domain& domain, Real_t vnew[])
           }
           if (vc <= 0.) {
 #if USE_MPI             
-             MPI_Abort(MPI_COMM_WORLD, VolumeError) ;
+             MPI_Abort(world, VolumeError) ;
 #else
              exit(VolumeError);
 #endif
@@ -2714,13 +2714,48 @@ int main(int argc, char *argv[])
    Domain_member fieldData ;
 
    MPI_Init(&argc, &argv) ;
-   MPI_Comm_size(MPI_COMM_WORLD, &numRanks) ;
-   MPI_Comm_rank(MPI_COMM_WORLD, &myRank) ;
+
+#if FAMPI
+
+   int first_visit = 1;
+repeat:
+   if(!first_visit) {
+	   /* Comming from a repeat */
+	   MPI_Comm_size(world, &numRanks) ;
+	   MPI_Comm_rank(world, &myRank) ;
+   } else {
+	   /* Comming from begining or from merged */
+	   if(argc > 1 && atoi(argv[1]) > 0) {
+		   /* It is merged */
+		   MPI_Comm parent;
+		   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+		   MPI_Comm_get_parent(&parent);
+		   MPI_Intercomm_merge(parent, 1, &world);
+		   MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
+		   sprintf(argv[1], "0");
+		   MPI_Comm_size(world, &numRanks) ;
+		   MPI_Comm_rank(world, &myRank) ;
+	   } else {
+		   /* It is from begining */
+		   /* Change the world communicator */
+		   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);   
+		   MPI_Comm_dup(MPI_COMM_WORLD, &world);
+		   /* MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN); */
+#else
+		   world = MPI_COMM_WORLD;
+#endif
+		   MPI_Comm_size(world, &numRanks) ;
+		   MPI_Comm_rank(world, &myRank) ;
+#if FAMPI
+	   }
+   }
+   first_visit = 0;
+#endif
+   
 #else
    numRanks = 1;
    myRank = 0;
 #endif   
-
    /* Set defaults that can be overridden by command line opts */
    opts.its = 9999999;
    opts.nx  = 30;
@@ -2732,7 +2767,7 @@ int main(int argc, char *argv[])
    opts.balance = 1;
    opts.cost = 1;
 
-   ParseCommandLineOptions(argc, argv, myRank, &opts);
+   ParseCommandLineOptions(argc-1, &argv[1], myRank, &opts);
 
    if ((myRank == 0) && (opts.quiet == 0)) {
       printf("Running problem size %d^3 per domain until completion\n", opts.nx);
@@ -2757,15 +2792,6 @@ int main(int argc, char *argv[])
    // Build the main data structure and initialize it
    locDom = new Domain(numRanks, col, row, plane, opts.nx,
                        side, opts.numReg, opts.balance, opts.cost) ;
-
-#if FAMPI
-   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);   
-   /* Change the world communicator */
-   MPI_Comm_dup(MPI_COMM_WORLD, &world);
-//   MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);   
-#else
-   world = MPI_COMM_WORLD;
-#endif
 
 #if USE_MPI   
 
@@ -2800,6 +2826,7 @@ int main(int argc, char *argv[])
 //debug to see region sizes
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
+   char str[100];
 
    be_init.end_timing();
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
@@ -2810,7 +2837,8 @@ int main(int argc, char *argv[])
 
 #if FAMPI	  
 
-	  if(locDom->cycle() == 10 && myRank == 1) *(int*)0 = 0;
+	  /* Inject Failure. */
+	  if(locDom->cycle() == 5 && myRank == 5) *(int*)0 = 0;
 
 	  /* Finish the tryblock */
 	  be_tryblock.start_timing();
@@ -2821,8 +2849,12 @@ int main(int argc, char *argv[])
 		  error_trace(rc);
 		  MPI_Comm world2;
 		  /* Shrink and replace the world */
-		  g_tb_manager.repair_comm(world, &world2);
+		  sprintf(str, "%d", locDom->cycle()+1);
+		  argv[1] = str;
+		  g_tb_manager.repair_comm(argc, argv, world, &world2);
 		  world = world2;
+		  g_tb_manager.pop();
+		  goto repeat;
 	  }
 	  MPI_Request tb_req = g_tb_manager.pop();
 
@@ -2864,7 +2896,7 @@ int main(int argc, char *argv[])
    double elapsed_timeG;
 #if USE_MPI   
    MPI_Reduce(&elapsed_time, &elapsed_timeG, 1, MPI_DOUBLE,
-              MPI_MAX, 0, MPI_COMM_WORLD);
+              MPI_MAX, 0, world);
 #else
    elapsed_timeG = elapsed_time;
 #endif

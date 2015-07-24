@@ -91,7 +91,7 @@ retry_tb:
 		goto retry_tb;
 	}
 
-	if(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc){
+ 	if(MPI_ERR_TRYBLOCK_FOUND_ERRORS == rc){
 		cout << "shrink failed with error: " << get_error_string(rc) << endl;
 		int test;
 		MPI_Test(&shrink_req, &test, &shrink_stat);
@@ -164,8 +164,12 @@ int TryBlockManager::tryblock_finish(double reqs_timeout) {
 int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, tb_timeout);
-	return MPI_Wait_local(
-		&tryblocks.back()->tryblock_request, MPI_STATUS_IGNORE, timeout);
+	int rc;
+	do {
+		rc = MPI_Wait_local(
+			&tryblocks.back()->tryblock_request, MPI_STATUS_IGNORE, timeout);
+
+	} while (rc == MPI_ERR_TIMEOUT);
 }
 
 void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
@@ -182,14 +186,35 @@ void TryBlockManager::get_requests(int* count, MPI_Request** reqs) {
 	*reqs = tryblocks.back()->requests.data();
 }
 
-void TryBlockManager::repair_comm(MPI_Comm world, MPI_Comm* out_world) {
+void TryBlockManager::repair_comm(
+	int argc, char** argv, MPI_Comm comm, MPI_Comm* out_comm) {
 	TryBlock* tb = tryblocks.back();
-/*
+
 	int rc = MPI_Wait_local(&tb->tryblock_request, MPI_STATUS_IGNORE,
 							MPI_TIMEOUT_ZERO);
 
-	if (MPI_SUCCESS != rc) {
-		std::cout << "failed" << std::endl;
-	}
-*/
+	int array_of_error_codes[] = { MPI_ERR_PROC_FAILED };
+	MPI_Group fgroup;
+	int fsize;
+	MPI_Get_failed_group(tb->tryblock_request, 1, array_of_error_codes,
+						 comm, &fgroup);
+
+	MPI_Group_size(fgroup, &fsize);
+	assert(fsize == 1);
+
+	MPI_Comm new_comm;
+	fampi_repair_comm_shrink(comm, &new_comm);
+
+	MPI_Comm spawned_comm;
+	fampi_repair_comm_spawn(new_comm, fsize, argc, argv, &spawned_comm);
+	
+	MPI_Comm merged_comm;
+	MPI_Intercomm_merge(spawned_comm, 1, &merged_comm);
+	MPI_Comm_free(&new_comm);
+	MPI_Comm_free(&spawned_comm);
+
+	MPI_Comm_set_errhandler(merged_comm, MPI_ERRORS_RETURN);
+
+	*out_comm = merged_comm;
+
 }
