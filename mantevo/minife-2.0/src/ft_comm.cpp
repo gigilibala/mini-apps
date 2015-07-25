@@ -60,9 +60,11 @@ namespace miniFE{
 		timer_type t0 = 0, tFQUERY = 0, tSHRINK = 0, tSPAWN = 0, tMERGE = 0;
 		
 		TICK();
+#if 0
 		MPI_Group fgroup;
 		MPI_Get_failed_group(tb_req, 1, &err_code, local_world, &fgroup);
 		MPI_Group_size(fgroup, &spawn_size);
+#endif
 		TOCK(tFQUERY);
 		
 		TICK();
