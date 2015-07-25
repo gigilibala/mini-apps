@@ -65,10 +65,8 @@ void CommRecv(Domain& domain, int msgType, Index_t xferFields,
       return ;
 
 #if FAMPI_2
-   be_tryblock.start_timing();
    g_tb_manager.push();
    g_tb_manager.tryblock_start(world, TRYBLOCK_FLAG_2ND_LEVEL);
-   be_tryblock.end_timing();
 #endif
 
    /* post recieve buffers for all incoming messages */
@@ -853,7 +851,6 @@ void CommSend(Domain& domain, int msgType,
       }
    }
 #ifdef FAMPI_2
-   be_tryblock.start_timing();
 
    int rc;
    MPI_Timeout timeout;
@@ -866,8 +863,6 @@ void CommSend(Domain& domain, int msgType,
    
    rc = g_tb_manager.wait_for_tryblock_finish(1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
-
-   be_tryblock.end_timing();
 
    MPI_Request tb_req = g_tb_manager.pop();
    g_tb_manager.add_requests(1, &tb_req);

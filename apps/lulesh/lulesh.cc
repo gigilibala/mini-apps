@@ -2697,9 +2697,6 @@ void LagrangeLeapFrog(Domain& domain)
 
 /******************************************/
 BenchmarkEntry be_init("Init");
-BenchmarkEntry be_compute("Compute");
-BenchmarkEntry be_tryblock("TryBlock");
-BenchmarkEntry be_recovery("Recovery");
 
 int main(int argc, char *argv[])
 {
@@ -2709,22 +2706,33 @@ int main(int argc, char *argv[])
    Int_t myRank ;
    struct cmdLineOpts opts;
    
-   be_init.start_timing();
+   // BEGIN timestep to solution */
+#if USE_MPI   
+   double start = MPI_Wtime();
+#else
+   timeval start;
+   gettimeofday(&start, NULL) ;
+#endif
+
 #if USE_MPI   
    Domain_member fieldData ;
 
    MPI_Init(&argc, &argv) ;
-
+   
 #if FAMPI
-
+   g_tb_manager.start_timing();
+   int failed_cycle = 5;
    int first_visit = 1;
+   int failed = 0;
 repeat:
+   be_init.start_timing();
    if(!first_visit) {
 	   /* Comming from a repeat */
 	   MPI_Comm_size(world, &numRanks) ;
 	   MPI_Comm_rank(world, &myRank) ;
    } else {
 	   /* Comming from begining or from merged */
+	   first_visit = 0;
 	   if(argc > 1 && atoi(argv[1]) > 0) {
 		   /* It is merged */
 		   MPI_Comm parent;
@@ -2735,6 +2743,7 @@ repeat:
 		   sprintf(argv[1], "0");
 		   MPI_Comm_size(world, &numRanks) ;
 		   MPI_Comm_rank(world, &myRank) ;
+		   failed = 1;
 	   } else {
 		   /* It is from begining */
 		   /* Change the world communicator */
@@ -2749,7 +2758,6 @@ repeat:
 #if FAMPI
 	   }
    }
-   first_visit = 0;
 #endif
    
 #else
@@ -2768,7 +2776,10 @@ repeat:
    opts.cost = 1;
 
    ParseCommandLineOptions(argc-1, &argv[1], myRank, &opts);
-
+#if FAMPI
+   if (!first_visit)
+	   opts.its -= failed_cycle;
+#endif
    if ((myRank == 0) && (opts.quiet == 0)) {
       printf("Running problem size %d^3 per domain until completion\n", opts.nx);
       printf("Num processors: %d\n", numRanks);
@@ -2815,18 +2826,9 @@ repeat:
    // End initialization
 //   MPI_Barrier(MPI_COMM_WORLD);
 #endif   
-   
-   // BEGIN timestep to solution */
-#if USE_MPI   
-   double start = MPI_Wtime();
-#else
-   timeval start;
-   gettimeofday(&start, NULL) ;
-#endif
 //debug to see region sizes
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
-   char str[100];
 
    be_init.end_timing();
    while((locDom->time() < locDom->stoptime()) && (locDom->cycle() < opts.its)) {
@@ -2838,16 +2840,19 @@ repeat:
 #if FAMPI	  
 
 	  /* Inject Failure. */
-	  if(locDom->cycle() == 5 && myRank == 5) *(int*)0 = 0;
+	  if (locDom->cycle() == failed_cycle && !failed) {
+		  if (myRank == 5) *(int*)0 = 0;
+		  failed = 1;
+	  }
 
 	  /* Finish the tryblock */
-	  be_tryblock.start_timing();
 	  rc = g_tb_manager.tryblock_finish(1.0);
 	  if(rc != MPI_SUCCESS) error_trace(rc);
 	  rc = g_tb_manager.wait_for_tryblock_finish(1.0);
 	  if(rc != MPI_SUCCESS) {
 		  error_trace(rc);
 		  MPI_Comm world2;
+		  char str[10];
 		  /* Shrink and replace the world */
 		  sprintf(str, "%d", locDom->cycle()+1);
 		  argv[1] = str;
@@ -2861,7 +2866,6 @@ repeat:
 	  g_tb_manager.push();
 	  /* Start the tryblock */
 	  g_tb_manager.tryblock_start(world, TRYBLOCK_FLAG_1TH_LEVEL);
-	  be_tryblock.end_timing();
 #endif
 
       LagrangeLeapFrog(*locDom) ;
@@ -2874,14 +2878,12 @@ repeat:
 
 #if FAMPI
    /* Finish the tryblock */
-   be_tryblock.start_timing();
    rc = g_tb_manager.tryblock_finish(1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
 
    rc = g_tb_manager.wait_for_tryblock_finish(1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
    MPI_Request tb_req = g_tb_manager.pop();
-   be_tryblock.end_timing();
 #endif
    
    // Use reduced max elapsed time
@@ -2910,14 +2912,13 @@ repeat:
       VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, opts.nx, numRanks);
    }
 
+   if (myRank == 0) {
+	   std::cout << be_init.to_string() << std::endl;
+	   g_tb_manager.print_stats();
+   }
 #if USE_MPI
    MPI_Finalize() ;
 #endif
-   if (myRank == 0) {
-	   std::cout << be_init.to_string() << " "
-				 << be_tryblock.to_string() << " "
-				 << std::endl;
-   }
    return 0 ;
 }
 
@@ -2925,3 +2926,4 @@ repeat:
 TryBlockManager g_tb_manager;
 #endif
 MPI_Comm world;
+int max_iter;

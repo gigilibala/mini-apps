@@ -15,6 +15,7 @@
 #include <vector>
 #include <mpi.h>
 #include <stdio.h>
+#include <string>
 
 #ifndef FTLIB_BENCHMARK_HPP
 #define FTLIB_BENCHMARK_HPP
@@ -22,13 +23,14 @@
 /* Used for timing benchmarks */
 class BenchmarkEntry {
 public:
-	const char* name;
+	const std::string name_;
 	double samples;
 	int count;
 	double t1;
 //	std::list<double> samples;
 	char out_str[100];
-	BenchmarkEntry(const char* name) : name(name), samples(0.0) , count(0) { };
+	BenchmarkEntry(const std::string name)
+		: name_(name), samples(0.0) , count(0) { };
 	~BenchmarkEntry() { };
 
 	void   start_timing() { t1 = MPI_Wtime(); };
@@ -38,7 +40,8 @@ public:
 	double get_mean() { return get_sum() / count; };
 	
 	char* to_string() {
-		sprintf(out_str, "%s: t(%lf) m(%lf)\n", name, get_sum(), get_mean());
+		sprintf(out_str, "%s: t(%lf) m(%lf)",
+				name_.c_str(), get_sum(), get_mean());
 		return out_str;
 	};
 	double get_low_mean_percentile(int percentile);

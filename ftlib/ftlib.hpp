@@ -13,6 +13,8 @@
 #include <vector>
 #include <mpi.h>
 
+#include "benchmark.hpp"
+
 /* Keep these functions for backward compatibility */
 int fampi_repair_comm_shrink(MPI_Comm fcomm, MPI_Comm* comm);
 int fampi_repair_comm_spawn(MPI_Comm new_comm, int vsize, int argc, char** argv, MPI_Comm* comm);
@@ -81,10 +83,26 @@ public:
 
 	void repair_comm(int argc, char** argv, MPI_Comm world, MPI_Comm* out_world);
 
-	TryBlockManager() { };
+	void start_timing();
+
+	void print_stats();
+
+	TryBlockManager() {
+		timing_started = false;
+		shrink_be = new BenchmarkEntry("shrink");
+		spawn_be =  new BenchmarkEntry("spawn");
+		tryblocks_be[0] = new BenchmarkEntry("tb_1");
+		tryblocks_be[1] = new BenchmarkEntry("tb_2");
+	};
 	~TryBlockManager() { };
 
 private:
 	std::vector<TryBlock*> tryblocks;
+	bool timing_started;
+
+	BenchmarkEntry* shrink_be;
+	BenchmarkEntry* spawn_be;
+	BenchmarkEntry* tryblocks_be[2];
+
 };
 

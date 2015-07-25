@@ -628,6 +628,7 @@ extern std::ofstream pfile;
 #endif
 
 extern MPI_Comm world;
+extern int max_iter;
 #ifdef FAMPI
 #include <ftlib/ftlib.hpp>
 #include <mpi-ext.h>
@@ -646,6 +647,5 @@ extern TryBlockManager g_tb_manager;
 
 #include <ftlib/benchmark.hpp>
 extern BenchmarkEntry be_init;
-extern BenchmarkEntry be_compute;
-extern BenchmarkEntry be_tryblock;
-extern BenchmarkEntry be_recovery;
+
+

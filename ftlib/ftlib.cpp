@@ -134,6 +134,7 @@ MPI_Request TryBlockManager::pop() {
 }
 
 int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
+	tryblocks_be[tryblocks.size()-1]->start_timing();
 	if (tryblocks.size() < 1) {
     	std:cout << __func__ << ": you should push first." << std::endl;
 	}
@@ -144,24 +145,31 @@ int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
 
 	tryblocks.back() = new TryBlock(comm);
 
-	return MPI_Tryblock_start(comm, flag,
+	int rc = MPI_Tryblock_start(comm, flag,
 								&tryblocks.back()->tryblock_request);
+	
+	tryblocks_be[tryblocks.size()-1]->end_timing();
+	return rc;
 }
 
 int TryBlockManager::tryblock_finish(double reqs_timeout) {
+	tryblocks_be[tryblocks.size()-1]->start_timing();
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, reqs_timeout);
 
 	TryBlock* tb = tryblocks.back();
 
-	return MPI_Tryblock_finish_local(tb->tryblock_request,
+	int rc = MPI_Tryblock_finish_local(tb->tryblock_request,
 									 tb->requests.size(),
 									 tb->requests.data(),
 									 timeout);
 
+	tryblocks_be[tryblocks.size()-1]->end_timing();
+	return rc;
 }
 
 int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
+	tryblocks_be[tryblocks.size()-1]->start_timing();
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, tb_timeout);
 	int rc;
@@ -170,6 +178,9 @@ int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
 			&tryblocks.back()->tryblock_request, MPI_STATUS_IGNORE, timeout);
 
 	} while (rc == MPI_ERR_TIMEOUT);
+
+	tryblocks_be[tryblocks.size()-1]->end_timing();
+	return rc;
 }
 
 void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
@@ -202,14 +213,20 @@ void TryBlockManager::repair_comm(
 	MPI_Group_size(fgroup, &fsize);
 	assert(fsize == 1);
 
+
+	if (timing_started) shrink_be->start_timing();
 	MPI_Comm new_comm;
 	fampi_repair_comm_shrink(comm, &new_comm);
+	if (timing_started) shrink_be->end_timing();
 
+	if (timing_started) spawn_be->start_timing();
 	MPI_Comm spawned_comm;
 	fampi_repair_comm_spawn(new_comm, fsize, argc, argv, &spawned_comm);
 	
 	MPI_Comm merged_comm;
 	MPI_Intercomm_merge(spawned_comm, 1, &merged_comm);
+	if (timing_started) spawn_be->end_timing();
+
 	MPI_Comm_free(&new_comm);
 	MPI_Comm_free(&spawned_comm);
 
@@ -217,4 +234,15 @@ void TryBlockManager::repair_comm(
 
 	*out_comm = merged_comm;
 
+}
+
+void TryBlockManager::start_timing() {
+	timing_started = true;
+}
+
+void TryBlockManager::print_stats() {
+	std::cout << tryblocks_be[0]->to_string() << std::endl;
+	std::cout << tryblocks_be[1]->to_string() << std::endl;
+	std::cout << shrink_be->to_string() << std::endl;
+	std::cout << spawn_be->to_string() << std::endl;
 }
