@@ -675,7 +675,7 @@ void operator()(MatrixType& A,
 
 template<typename MatrixType,
          typename VectorType>
-matvec(MatrixType& A, VectorType& x, VectorType& y)
+void matvec(MatrixType& A, VectorType& x, VectorType& y)
 {
 //matvec_std<MatrixType,VectorType> mv;
   matvec_overlap<MatrixType,VectorType> mv;

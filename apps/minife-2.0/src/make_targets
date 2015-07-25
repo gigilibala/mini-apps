@@ -43,6 +43,9 @@ test:all
 install: all
 	cp miniFE.x $(USRPATH)/bin
 
+uninstall:
+	rm $(USRPATH)/bin/miniFE.x 
+
 clean:
 	rm -f *.o *.a *.x *.linkinfo miniFE_info.hpp
 

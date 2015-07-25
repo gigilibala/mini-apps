@@ -1,13 +1,14 @@
 # COPYRIGHT @ Amin Hassani 2015
 
-PROJECTS = stencil/1d mantevo/minife-2.0/src benchmarks
-LIBRARIES= ftlib
+PROJECTS = apps/stencil/1d benchmarks apps/minife-2.0/src apps/lulesh
+LIBRARIES= ftlib comm-pat
 
 TARGETS  = $(LIBRARIES) $(PROJECTS)
 # TARGETS  = $(filter-out ./, $(dir $(shell find . -name 'Makefile' -print)))
 
 BUILDDIRS = $(TARGETS:%=build-%)
 INSTALLDIRS = $(TARGETS:%=install-%)
+UNINSTALLDIRS = $(TARGETS:%=uninstall-%)
 CLEANDIRS = $(TARGETS:%=clean-%)
 
 all: $(BUILDDIRS)
@@ -18,6 +19,10 @@ $(BUILDDIRS):
 install: $(INSTALLDIRS)
 $(INSTALLDIRS): 
 	$(MAKE) -C $(@:install-%=%) install
+
+uninstall: $(UNINSTALLDIRS)
+$(UNINSTALLDIRS): 
+	$(MAKE) -C $(@:uninstall-%=%) uninstall
 
 clean: $(CLEANDIRS)
 $(CLEANDIRS):
