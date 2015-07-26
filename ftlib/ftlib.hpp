@@ -77,6 +77,8 @@ public:
 
 	int wait_for_tryblock_finish(double tb_timeout);
 	
+	int tryblock_finish_and_wait(double reqs_timeout, double tb_timout);
+
 	void add_requests(int count, MPI_Request* reqs);
 
 	void get_requests(int* count, MPI_Request** reqs);

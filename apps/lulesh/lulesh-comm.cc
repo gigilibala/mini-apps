@@ -858,10 +858,7 @@ void CommSend(Domain& domain, int msgType,
    g_tb_manager.add_requests(pmsg+emsg+cmsg, domain.sendRequest);
 
    /* Finish the tryblock */
-   rc = g_tb_manager.tryblock_finish(1.0);
-   if(rc != MPI_SUCCESS) error_trace(rc);
-   
-   rc = g_tb_manager.wait_for_tryblock_finish(1.0);
+   rc = g_tb_manager.tryblock_finish_and_wait(1.0, 1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
 
    MPI_Request tb_req = g_tb_manager.pop();

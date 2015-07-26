@@ -160,9 +160,9 @@ int TryBlockManager::tryblock_finish(double reqs_timeout) {
 	TryBlock* tb = tryblocks.back();
 
 	int rc = MPI_Tryblock_finish_local(tb->tryblock_request,
-									 tb->requests.size(),
-									 tb->requests.data(),
-									 timeout);
+									   tb->requests.size(),
+									   tb->requests.data(),
+									   timeout);
 
 	tryblocks_be[tryblocks.size()-1]->end_timing();
 	return rc;
@@ -172,15 +172,32 @@ int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
 	tryblocks_be[tryblocks.size()-1]->start_timing();
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, tb_timeout);
+	int rc = MPI_Wait_local(
+		&tryblocks.back()->tryblock_request, MPI_STATUS_IGNORE, timeout);
+
+	tryblocks_be[tryblocks.size()-1]->end_timing();
+	return rc;
+}
+
+int TryBlockManager::tryblock_finish_and_wait(double reqs_timeout, double tb_timout) {
+	tryblocks_be[tryblocks.size()-1]->start_timing();
+	MPI_Timeout timeout;
+	MPI_Timeout_set_seconds(&timeout, reqs_timeout);
+
+	TryBlock* tb = tryblocks.back();
 	int rc;
 	do {
+		MPI_Tryblock_finish_local(tb->tryblock_request,
+								  tb->requests.size(),
+								  tb->requests.data(),
+								  timeout);
 		rc = MPI_Wait_local(
 			&tryblocks.back()->tryblock_request, MPI_STATUS_IGNORE, timeout);
-
 	} while (rc == MPI_ERR_TIMEOUT);
 
 	tryblocks_be[tryblocks.size()-1]->end_timing();
 	return rc;
+
 }
 
 void TryBlockManager::add_requests(int count, MPI_Request* reqs) {

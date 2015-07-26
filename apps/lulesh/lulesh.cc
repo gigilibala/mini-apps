@@ -2721,7 +2721,7 @@ int main(int argc, char *argv[])
    
 #if FAMPI
    g_tb_manager.start_timing();
-   int failed_cycle = 5;
+   int failed_cycle = 1;
    int first_visit = 1;
    int failed = 0;
 repeat:
@@ -2846,9 +2846,7 @@ repeat:
 	  }
 
 	  /* Finish the tryblock */
-	  rc = g_tb_manager.tryblock_finish(1.0);
-	  if(rc != MPI_SUCCESS) error_trace(rc);
-	  rc = g_tb_manager.wait_for_tryblock_finish(1.0);
+	  rc = g_tb_manager.tryblock_finish_and_wait(1.0, 1.0);
 	  if(rc != MPI_SUCCESS) {
 		  error_trace(rc);
 		  MPI_Comm world2;
@@ -2878,10 +2876,7 @@ repeat:
 
 #if FAMPI
    /* Finish the tryblock */
-   rc = g_tb_manager.tryblock_finish(1.0);
-   if(rc != MPI_SUCCESS) error_trace(rc);
-
-   rc = g_tb_manager.wait_for_tryblock_finish(1.0);
+   rc = g_tb_manager.tryblock_finish_and_wait(1.0, 1.0);
    if(rc != MPI_SUCCESS) error_trace(rc);
    MPI_Request tb_req = g_tb_manager.pop();
 #endif
