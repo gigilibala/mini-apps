@@ -2721,7 +2721,7 @@ int main(int argc, char *argv[])
    
 #if FAMPI
    g_tb_manager.start_timing();
-   int failed_cycle = 1;
+   int failed_cycle = 190;
    int first_visit = 1;
    int failed = 0;
 repeat:
@@ -2730,9 +2730,9 @@ repeat:
 	   /* Comming from a repeat */
 	   MPI_Comm_size(world, &numRanks) ;
 	   MPI_Comm_rank(world, &myRank) ;
+	   first_visit = 1;
    } else {
 	   /* Comming from begining or from merged */
-	   first_visit = 0;
 	   if(argc > 1 && atoi(argv[1]) > 0) {
 		   /* It is merged */
 		   MPI_Comm parent;
@@ -2744,7 +2744,9 @@ repeat:
 		   MPI_Comm_size(world, &numRanks) ;
 		   MPI_Comm_rank(world, &myRank) ;
 		   failed = 1;
+		   first_visit = 1;
 	   } else {
+		   first_visit = 0;
 		   /* It is from begining */
 		   /* Change the world communicator */
 		   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);   
@@ -2777,7 +2779,7 @@ repeat:
 
    ParseCommandLineOptions(argc-1, &argv[1], myRank, &opts);
 #if FAMPI
-   if (!first_visit)
+   if (first_visit)
 	   opts.its -= failed_cycle;
 #endif
    if ((myRank == 0) && (opts.quiet == 0)) {
@@ -2839,16 +2841,17 @@ repeat:
 
 #if FAMPI	  
 
+#if 0
 	  /* Inject Failure. */
 	  if (locDom->cycle() == failed_cycle && !failed) {
 		  if (myRank == 5) *(int*)0 = 0;
 		  failed = 1;
 	  }
-
+#endif
 	  /* Finish the tryblock */
 	  rc = g_tb_manager.tryblock_finish_and_wait(1.0, 1.0);
 	  if(rc != MPI_SUCCESS) {
-		  error_trace(rc);
+		  /* error_trace(rc); */
 		  MPI_Comm world2;
 		  char str[10];
 		  /* Shrink and replace the world */
@@ -2907,10 +2910,13 @@ repeat:
       VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, opts.nx, numRanks);
    }
 
+#if FAMPI
    if (myRank == 0) {
 	   std::cout << be_init.to_string() << std::endl;
 	   g_tb_manager.print_stats();
    }
+#endif
+
 #if USE_MPI
    MPI_Finalize() ;
 #endif
