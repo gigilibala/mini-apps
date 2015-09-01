@@ -381,7 +381,7 @@ driver(const Box& global_box, Box& my_box,
     else
       ydoc.get(title)->add("MATVEC Mflops","inf");
 
-#if USING_FAMPI
+#if FAMPI
     ydoc.get(title)->add("TRYBLOCK Time",cg_times[TRYBLOCK]);
     ydoc.get(title)->add("CHECKPOINT Time",cg_times[CHECKPOINT]);
     ydoc.get(title)->add("RECOVERY Time",cg_times[RECOVERY]);

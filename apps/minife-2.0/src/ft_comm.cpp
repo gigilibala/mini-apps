@@ -49,7 +49,7 @@ namespace miniFE{
 
 	void FTComm::repair(MPI_Request tb_req, timer_type* cg_times){
  
-#if USING_FAMPI
+#if FAMPI
 		MPI_Comm shrinked_comm, spawned_comm, nwe;
 		MPI_Comm local_world = world;
 		

@@ -20,10 +20,9 @@ static inline char* get_error_string(int rc){
 }
 
 
-/*
+/**
  * spawns new processes and returnes the newly created communicator
  */
-
 int fampi_repair_comm_spawn(MPI_Comm new_comm, int num_new_procs, int argc, char** argv, MPI_Comm* comm){
 	int exit_code = 0, rc;
 	MPI_Comm intercomm;
@@ -197,7 +196,6 @@ int TryBlockManager::tryblock_finish_and_wait(double reqs_timeout, double tb_tim
 
 	tryblocks_be[tryblocks.size()-1]->end_timing();
 	return rc;
-
 }
 
 void TryBlockManager::add_requests(int count, MPI_Request* reqs) {

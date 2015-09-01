@@ -202,7 +202,7 @@ begin_exchange_externals(MatrixType& A,
   //
 
   int MPI_MY_TAG = 99;
-#ifdef USING_FAMPI
+#ifdef FAMPI
   // first num_neighbors are receives
   // second num_neighbors are send
   exch_ext_requests.resize(num_neighbors*2);
@@ -241,13 +241,13 @@ begin_exchange_externals(MatrixType& A,
 
   for(int i=0; i<num_neighbors; ++i) {
     int n_send = send_length[i];
-#ifdef USING_FAMPI
+#ifdef FAMPI
     assert(MPI_SUCCESS == MPI_Isend(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
 									FTComm::get_instance()->get_world_comm(), &exch_ext_requests[num_neighbors+i]));
 #else
     MPI_Send(s_buffer, n_send, mpi_dtype, neighbors[i], MPI_MY_TAG,
              FTComm::get_instance()->get_world_comm());
-#endif	// USING_FAMPI
+#endif	// FAMPI
     s_buffer += n_send;
   }
 //  MPI_Waitall(num_neighbors, &exch_ext_requests[num_neighbors], MPI_STATUS_IGNORE);
@@ -263,7 +263,7 @@ finish_exchange_externals(MatrixType& A)
   //
   // Complete the reads issued above
   //
-#if USING_FAMPI
+#if FAMPI
 //	MPI_Timeout timeout;
 //    MPI_Timeout_set_seconds(&timeout, 1.0);
 	MPI_Timeout timeout = MPI_TIMEOUT_ZERO; 
@@ -278,7 +278,7 @@ finish_exchange_externals(MatrixType& A)
     }
   }
   return 0;
-#endif	// USING_FAMPI
+#endif	// FAMPI
   
 
 #endif //HAVE_MPI

@@ -240,7 +240,7 @@ restart:
 	/* Here put the tryblock start. does not need to go before this. Do the data
 	 * exchange and checkpointing here too. */
 
-#ifndef USING_FAMPI
+#ifndef FAMPI
     TICK(); matvec(A, p, Ap); TOCK(tMATVEC);
 #else	
 	MPI_Request tb_req;

@@ -69,7 +69,7 @@ void get_parameters(int argc, char** argv, Parameters& params)
   params.load_imbalance =
       Mantevo::parse_parameter<float>(argstring, "load_imbalance", 0);
   params.numthreads = Mantevo::parse_parameter<int>(argstring, "numthreads", 1);
-#if USING_FAMPI
+#if FAMPI
   /* setting configuration default to use overlapping communication and computation */
   params.mv_overlap_comm_comp = Mantevo::parse_parameter<int>(argstring, "mv_overlap_comm_comp", 1);
 #else
