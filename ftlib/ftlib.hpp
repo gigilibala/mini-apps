@@ -93,6 +93,7 @@ public:
 		timing_started = false;
 		shrink_be = new BenchmarkEntry("shrink");
 		spawn_be =  new BenchmarkEntry("spawn");
+		merge_be =  new BenchmarkEntry("merge");
 		tryblocks_be[0] = new BenchmarkEntry("tb_1");
 		tryblocks_be[1] = new BenchmarkEntry("tb_2");
 	};
@@ -104,6 +105,7 @@ private:
 
 	BenchmarkEntry* shrink_be;
 	BenchmarkEntry* spawn_be;
+	BenchmarkEntry* merge_be;
 	BenchmarkEntry* tryblocks_be[2];
 
 };
