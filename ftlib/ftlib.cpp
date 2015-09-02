@@ -6,6 +6,7 @@
 #include <mpi.h>
 #include <mpi-ext.h>
 #include <assert.h>
+#include <fstream>
 
 #include "ftlib.hpp"
 #include "helper.hpp"
@@ -306,11 +307,11 @@ int TryBlockManager::repeat(MPI_Comm* world) {
 			MPI_Comm_dup(MPI_COMM_WORLD, world);
 			int rank;
 			MPI_Comm_rank(*world, &rank);
-			int failed_ranks[] = { 7 };
-			if (failed_ranks[0] == rank){
-				i_am_dead_ = true;
-				printf("rank is failed %d\n", rank);
+
+			if (0 == rank) {
+				process_file();
 			}
+			MPI_Bcast(failed_array_, fas_, MPI_INT, 0, *world);
 		}
 	}
 	MPI_Comm_set_errhandler(*world, MPI_ERRORS_RETURN);
@@ -325,7 +326,48 @@ int TryBlockManager::failed_cycle() {
 	return failed_cycle_;
 }
 
-bool TryBlockManager::am_i_dead() {
+bool TryBlockManager::am_i_dead(int cycle, int rank) {
 	TRACE(0);
-	return i_am_dead_;
+	int found_cycle = false;
+	int found_rank  = false;
+	int idx = 0;
+	int cycles = failed_array_[idx++];
+	for (int i = 0; i < cycles; i++) {
+		int failed_cycle = failed_array_[idx++];
+		int failed_ranks = failed_array_[idx++];
+		if (failed_cycle == cycle)
+			found_cycle = true;
+		for (int j = 0; j < failed_ranks; j++) {
+			if (rank == failed_array_[idx++])
+				found_rank = true;
+		}
+	}
+	return found_cycle && found_rank && !is_failed_;
+}
+
+/**
+ * File structure for injecting failures.
+ *
+ * <num cycles failure>
+ * <cycle1>  <num failed> <failed rank 1 > ... <failed rank (num failed)>
+ * ...
+ * <cyclen>  <num failed> <failed rank 1 > ... <failed rank (num failed)>
+ */
+
+int TryBlockManager::process_file() {
+	std::ifstream ifs("ftlib.dat", std::ifstream::in);
+
+	fas_ = 0;
+	while (ifs.good()) {
+		ifs >> failed_array_[fas_++];
+	}
+	ifs.close();
+
+#if 1
+	int i;
+	for (i = 0; i < fas_; i++) {
+		printf ("%d ", failed_array_[i]);
+	}
+	printf("\n");
+#endif
 }

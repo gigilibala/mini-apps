@@ -98,7 +98,9 @@ public:
 
 	int failed_cycle();
 
-	bool am_i_dead();
+	bool am_i_dead(int cycle, int rank);
+
+	int process_file();
 
 	TryBlockManager() {
 		timing_started = false;
@@ -107,6 +109,7 @@ public:
 		merge_be =  new BenchmarkEntry("merge");
 		tryblocks_be[0] = new BenchmarkEntry("tb_1");
 		tryblocks_be[1] = new BenchmarkEntry("tb_2");
+		fas_ = MAX_FAS;
 	};
 	~TryBlockManager() { };
 
@@ -123,5 +126,9 @@ private:
 	int is_failed_;
 	int repeat_;
 	int i_am_dead_;
+
+	const static int MAX_FAS = 100;
+	int failed_array_[MAX_FAS];
+	int fas_;					/* failed_array_size */
 };
 

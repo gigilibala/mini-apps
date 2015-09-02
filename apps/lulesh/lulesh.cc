@@ -2811,12 +2811,16 @@ repeat:
 #if FAMPI	  
 
 	  /* Inject Failure. */
+	  if (g_tb_manager.am_i_dead(locDom->cycle(), myRank))
+		  *(int*)0 = 0;		/* inject segmentation fault. */
+
+#if 0
 	  if (locDom->cycle() == g_tb_manager.failed_cycle()/* && !failed */) {
 		  if (g_tb_manager.am_i_dead())
 			  *(int*)0 = 0;		/* inject segmentation fault. */
 
 	  }
-
+#endif
 	  /* Finish the tryblock */
 	  rc = g_tb_manager.tryblock_finish_and_wait(1.0, 1.0);
 	  if(rc != MPI_SUCCESS) {
