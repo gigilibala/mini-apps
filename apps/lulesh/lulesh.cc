@@ -2707,7 +2707,7 @@ int main(int argc, char *argv[])
    struct cmdLineOpts opts;
    
    // BEGIN timestep to solution */
-#if USE_MPI   
+#if USE_MPI
    double start = MPI_Wtime();
 #else
    timeval start;
@@ -2718,54 +2718,23 @@ int main(int argc, char *argv[])
    Domain_member fieldData ;
 
    MPI_Init(&argc, &argv) ;
-   
 #if FAMPI
    g_tb_manager.start_timing();
-   int failed_cycle = 190;
-   int first_visit = 1;
-   int failed = 0;
+   g_tb_manager.init();
 repeat:
+   g_tb_manager.repeat(&world);
    be_init.start_timing();
-   if(!first_visit) {
-	   /* Comming from a repeat */
-	   MPI_Comm_size(world, &numRanks) ;
-	   MPI_Comm_rank(world, &myRank) ;
-	   first_visit = 1;
-   } else {
-	   /* Comming from begining or from merged */
-	   if(argc > 1 && atoi(argv[1]) > 0) {
-		   /* It is merged */
-		   MPI_Comm parent;
-		   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-		   MPI_Comm_get_parent(&parent);
-		   MPI_Intercomm_merge(parent, 1, &world);
-		   MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN);
-		   sprintf(argv[1], "0");
-		   MPI_Comm_size(world, &numRanks) ;
-		   MPI_Comm_rank(world, &myRank) ;
-		   failed = 1;
-		   first_visit = 1;
-	   } else {
-		   first_visit = 0;
-		   /* It is from begining */
-		   /* Change the world communicator */
-		   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);   
-		   MPI_Comm_dup(MPI_COMM_WORLD, &world);
-		   /* MPI_Comm_set_errhandler(world, MPI_ERRORS_RETURN); */
 #else
-		   world = MPI_COMM_WORLD;
-#endif
-		   MPI_Comm_size(world, &numRanks) ;
-		   MPI_Comm_rank(world, &myRank) ;
-#if FAMPI
-	   }
-   }
-#endif
+   world = MPI_COMM_WORLD;
+#endif // FAMPI
+   MPI_Comm_size(world, &numRanks) ;
+   MPI_Comm_rank(world, &myRank) ;
    
-#else
+#else 
    numRanks = 1;
    myRank = 0;
-#endif   
+#endif // USE_MPI
+   
    /* Set defaults that can be overridden by command line opts */
    opts.its = 9999999;
    opts.nx  = 30;
@@ -2777,10 +2746,10 @@ repeat:
    opts.balance = 1;
    opts.cost = 1;
 
-   ParseCommandLineOptions(argc-1, &argv[1], myRank, &opts);
+   ParseCommandLineOptions(argc, argv, myRank, &opts);
 #if FAMPI
-   if (first_visit)
-	   opts.its -= failed_cycle;
+   if (g_tb_manager.is_failed())
+	   opts.its -= g_tb_manager.failed_cycle();
 #endif
    if ((myRank == 0) && (opts.quiet == 0)) {
       printf("Running problem size %d^3 per domain until completion\n", opts.nx);
@@ -2841,24 +2810,22 @@ repeat:
 
 #if FAMPI	  
 
-#if 0
 	  /* Inject Failure. */
-	  if (locDom->cycle() == failed_cycle && !failed) {
-		  if (myRank == 5) *(int*)0 = 0;
-		  failed = 1;
+	  if (locDom->cycle() == g_tb_manager.failed_cycle()/* && !failed */) {
+		  if (g_tb_manager.am_i_dead())
+			  *(int*)0 = 0;		/* inject segmentation fault. */
+
 	  }
-#endif
+
 	  /* Finish the tryblock */
 	  rc = g_tb_manager.tryblock_finish_and_wait(1.0, 1.0);
 	  if(rc != MPI_SUCCESS) {
 		  /* error_trace(rc); */
 		  MPI_Comm world2;
-		  char str[10];
 		  /* Shrink and replace the world */
-		  sprintf(str, "%d", locDom->cycle()+1);
-		  argv[1] = str;
 		  g_tb_manager.repair_comm(argc, argv, world, &world2);
 		  world = world2;
+		  /* Do an allreduce to find out the cycle. */
 		  g_tb_manager.pop();
 		  goto repeat;
 	  }

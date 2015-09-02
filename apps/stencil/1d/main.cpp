@@ -11,6 +11,11 @@
 #include <helper.hpp>
 #include <ftlib.hpp>
 
+/* public timing functions */
+extern double gtime;
+#define TICK()     (gtime = MPI_Wtime())
+#define TOCK(time) (time += MPI_Wtime() - gtime)
+
 //#define DEBUG 1
 
 #define WITH_FA 1

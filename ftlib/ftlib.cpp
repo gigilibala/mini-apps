@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #include "ftlib.hpp"
+#include "helper.hpp"
 
 using namespace std;
 
@@ -19,11 +20,13 @@ static inline char* get_error_string(int rc){
 	return error_string;
 }
 
+double gtime;
 
 /**
  * spawns new processes and returnes the newly created communicator
  */
 int fampi_repair_comm_spawn(MPI_Comm new_comm, int num_new_procs, int argc, char** argv, MPI_Comm* comm){
+	TRACE(0);
 	int exit_code = 0, rc;
 	MPI_Comm intercomm;
 	int error_codes;
@@ -48,7 +51,7 @@ int fampi_repair_comm_spawn(MPI_Comm new_comm, int num_new_procs, int argc, char
  
 /* shrinking a communicator by removing failed communicators  */
 int fampi_repair_comm_shrink(MPI_Comm fcomm, MPI_Comm* comm){
-
+	TRACE(0);
 	int             rc, exit_code;
 	MPI_Request     shrink_req, tb_req;
 	MPI_Status      shrink_stat, tb_stat;
@@ -119,10 +122,12 @@ retry_tb:
 
 /* TryBlock */
 void TryBlockManager::push() {
+	TRACE(0);
 	tryblocks.push_back(NULL);
 }
 
 MPI_Request TryBlockManager::pop() {
+	TRACE(0);
 	TryBlock* tb = tryblocks.back();
 	tryblocks.pop_back();
 	if (NULL == tb) {
@@ -133,6 +138,7 @@ MPI_Request TryBlockManager::pop() {
 }
 
 int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
+	TRACE(0);
 	tryblocks_be[tryblocks.size()-1]->start_timing();
 	if (tryblocks.size() < 1) {
     	std:cout << __func__ << ": you should push first." << std::endl;
@@ -152,6 +158,7 @@ int TryBlockManager::tryblock_start(MPI_Comm comm, int flag) {
 }
 
 int TryBlockManager::tryblock_finish(double reqs_timeout) {
+	TRACE(0);
 	tryblocks_be[tryblocks.size()-1]->start_timing();
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, reqs_timeout);
@@ -168,6 +175,7 @@ int TryBlockManager::tryblock_finish(double reqs_timeout) {
 }
 
 int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
+	TRACE(0);
 	tryblocks_be[tryblocks.size()-1]->start_timing();
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, tb_timeout);
@@ -179,6 +187,7 @@ int TryBlockManager::wait_for_tryblock_finish(double tb_timeout) {
 }
 
 int TryBlockManager::tryblock_finish_and_wait(double reqs_timeout, double tb_timout) {
+	TRACE(0);
 	tryblocks_be[tryblocks.size()-1]->start_timing();
 	MPI_Timeout timeout;
 	MPI_Timeout_set_seconds(&timeout, reqs_timeout);
@@ -199,6 +208,7 @@ int TryBlockManager::tryblock_finish_and_wait(double reqs_timeout, double tb_tim
 }
 
 void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
+	TRACE(0);
 	tryblocks.back()->requests.reserve(
 		tryblocks.back()->requests.size() + count);
 
@@ -208,12 +218,14 @@ void TryBlockManager::add_requests(int count, MPI_Request* reqs) {
 }
 
 void TryBlockManager::get_requests(int* count, MPI_Request** reqs) {
+	TRACE(0);
 	*count = tryblocks.back()->requests.size();
 	*reqs = tryblocks.back()->requests.data();
 }
 
 void TryBlockManager::repair_comm(
 	int argc, char** argv, MPI_Comm comm, MPI_Comm* out_comm) {
+	TRACE(0);
 	TryBlock* tb = tryblocks.back();
 
 	int rc = MPI_Wait_local(&tb->tryblock_request, MPI_STATUS_IGNORE,
@@ -263,4 +275,57 @@ void TryBlockManager::print_stats() {
 	std::cout << shrink_be->to_string() << std::endl;
 	std::cout << spawn_be->to_string() << std::endl;
 	std::cout << merge_be->to_string() << std::endl;
+}
+
+void TryBlockManager::init() {
+	TRACE(0);
+	failed_cycle_ = 2;
+	is_failed_ = false;
+	repeat_ = 0;
+	i_am_dead_ = false;
+}
+
+int TryBlockManager::repeat(MPI_Comm* world) {
+	TRACE(0);
+	repeat_++;
+	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+	MPI_Comm parent;
+	MPI_Comm_get_parent(&parent);
+	if (parent != MPI_COMM_NULL) {	/* merged */
+		MPI_Intercomm_merge(parent, 1, world);
+		is_failed_ = true;
+		TRACE(0);
+	} else {				/* from begining or repeat */
+		if (repeat_ > 1) {	/* from repeat */
+			TRACE(0);
+			is_failed_ = true;
+		} else {			/* from begining */
+			/* It is from begining */
+			/* Change the world communicator */
+			TRACE(0);
+			MPI_Comm_dup(MPI_COMM_WORLD, world);
+			int rank;
+			MPI_Comm_rank(*world, &rank);
+			int failed_ranks[] = { 7 };
+			if (failed_ranks[0] == rank){
+				i_am_dead_ = true;
+				printf("rank is failed %d\n", rank);
+			}
+		}
+	}
+	MPI_Comm_set_errhandler(*world, MPI_ERRORS_RETURN);
+	return 0;
+}
+
+bool TryBlockManager::is_failed() {
+	return is_failed_;
+}
+
+int TryBlockManager::failed_cycle() {
+	return failed_cycle_;
+}
+
+bool TryBlockManager::am_i_dead() {
+	TRACE(0);
+	return i_am_dead_;
 }

@@ -14,6 +14,7 @@
 #include <mpi.h>
 
 #include "benchmark.hpp"
+#include "helper.hpp"
 
 /* Keep these functions for backward compatibility */
 int fampi_repair_comm_shrink(MPI_Comm fcomm, MPI_Comm* comm);
@@ -89,6 +90,16 @@ public:
 
 	void print_stats();
 
+	void init();
+
+	int repeat(MPI_Comm* world);
+
+	bool is_failed();
+
+	int failed_cycle();
+
+	bool am_i_dead();
+
 	TryBlockManager() {
 		timing_started = false;
 		shrink_be = new BenchmarkEntry("shrink");
@@ -108,5 +119,9 @@ private:
 	BenchmarkEntry* merge_be;
 	BenchmarkEntry* tryblocks_be[2];
 
+	int failed_cycle_;
+	int is_failed_;
+	int repeat_;
+	int i_am_dead_;
 };
 
