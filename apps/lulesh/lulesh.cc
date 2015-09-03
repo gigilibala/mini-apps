@@ -2895,7 +2895,7 @@ repeat:
 }
 
 #ifdef FAMPI
-TryBlockManager g_tb_manager;
+TryBlockManager g_tb_manager(1);
 #endif
 MPI_Comm world;
 int max_iter;

@@ -239,7 +239,6 @@ void TryBlockManager::repair_comm(
 						 comm, &fgroup);
 
 	MPI_Group_size(fgroup, &fsize);
-	assert(fsize == 1);
 
 
 	if (timing_started) shrink_be->start_timing();
@@ -252,17 +251,31 @@ void TryBlockManager::repair_comm(
 	fampi_repair_comm_spawn(new_comm, fsize, argc, argv, &spawned_comm);
 	if (timing_started) spawn_be->end_timing();
 	
-	if (timing_started) merge_be->start_timing();
-	MPI_Comm merged_comm;
-	MPI_Intercomm_merge(spawned_comm, 1, &merged_comm);
-	if (timing_started) merge_be->end_timing();
+	if (type_ == 0) {			/* shrink */
+		if (timing_started) merge_be->start_timing();
+		MPI_Comm merged_comm;
+		MPI_Intercomm_merge(spawned_comm, 1, &merged_comm);
+		if (timing_started) merge_be->end_timing();
+
+		*out_comm = merged_comm;
+	} else if (type_ == 1) {		/* shrink and rebuild */
+		if (timing_started) rebuild_be->start_timing();
+		MPI_Comm rebuild_comm;
+		MPI_Request rebuild_req;
+		int* ranks = new int[fsize];
+		for (int i = 0; i < fsize; i++)
+			ranks[i] = i;
+		MPI_Comm_irebuild(
+			comm, 0, spawned_comm, fsize, ranks, 0, &rebuild_comm, &rebuild_req);
+		MPI_Wait_local(&rebuild_req, MPI_STATUS_IGNORE, MPI_TIMEOUT_ZERO);
+		if (timing_started) rebuild_be->end_timing();
+
+		*out_comm = rebuild_comm;
+	}
 
 	MPI_Comm_free(&new_comm);
 	MPI_Comm_free(&spawned_comm);
-
-	MPI_Comm_set_errhandler(merged_comm, MPI_ERRORS_RETURN);
-
-	*out_comm = merged_comm;
+	MPI_Comm_set_errhandler(*out_comm, MPI_ERRORS_RETURN);
 
 }
 
@@ -293,7 +306,14 @@ int TryBlockManager::repeat(MPI_Comm* world) {
 	MPI_Comm parent;
 	MPI_Comm_get_parent(&parent);
 	if (parent != MPI_COMM_NULL) {	/* merged */
-		MPI_Intercomm_merge(parent, 1, world);
+		if (type_ == 0) {	/* merge */
+			MPI_Intercomm_merge(parent, 1, world);
+		} else if (type_ == 1) { /* join */
+			MPI_Request join_req;
+			MPI_Comm_irebuild_join(parent, world, &join_req);
+			MPI_Wait_local(&join_req, MPI_STATUS_IGNORE, MPI_TIMEOUT_ZERO);
+		}
+
 		is_failed_ = true;
 		TRACE(0);
 	} else {				/* from begining or repeat */

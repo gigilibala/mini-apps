@@ -61,7 +61,6 @@ private:
 
 };
 
-
 /* Managing TryBlocks such as starting, finishing, and waiting for them to
  * finish. */
 class TryBlockManager {
@@ -102,14 +101,16 @@ public:
 
 	int process_file();
 
-	TryBlockManager() {
+	TryBlockManager(int type) {
 		timing_started = false;
 		shrink_be = new BenchmarkEntry("shrink");
 		spawn_be =  new BenchmarkEntry("spawn");
 		merge_be =  new BenchmarkEntry("merge");
+		rebuild_be =  new BenchmarkEntry("rebuild");
 		tryblocks_be[0] = new BenchmarkEntry("tb_1");
 		tryblocks_be[1] = new BenchmarkEntry("tb_2");
 		fas_ = MAX_FAS;
+		type_ = type;
 	};
 	~TryBlockManager() { };
 
@@ -120,6 +121,7 @@ private:
 	BenchmarkEntry* shrink_be;
 	BenchmarkEntry* spawn_be;
 	BenchmarkEntry* merge_be;
+	BenchmarkEntry* rebuild_be;
 	BenchmarkEntry* tryblocks_be[2];
 
 	int failed_cycle_;
@@ -130,5 +132,6 @@ private:
 	const static int MAX_FAS = 100;
 	int failed_array_[MAX_FAS];
 	int fas_;					/* failed_array_size */
+	int type_;
 };
 
