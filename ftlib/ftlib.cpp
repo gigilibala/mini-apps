@@ -289,6 +289,7 @@ void TryBlockManager::print_stats() {
 	std::cout << shrink_be->to_string() << std::endl;
 	std::cout << spawn_be->to_string() << std::endl;
 	std::cout << merge_be->to_string() << std::endl;
+	std::cout << rebuild_be->to_string() << std::endl;
 }
 
 void TryBlockManager::init() {
@@ -383,7 +384,7 @@ int TryBlockManager::process_file() {
 	}
 	ifs.close();
 
-#if 1
+#if 0
 	int i;
 	for (i = 0; i < fas_; i++) {
 		printf ("%d ", failed_array_[i]);
